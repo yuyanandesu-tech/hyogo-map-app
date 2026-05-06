@@ -5,4 +5,3 @@ dist/
 .env
 .env.*
 data/jp_city.c.topojson
-data/hyogo-boundaries.topojson

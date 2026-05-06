@@ -28,6 +28,95 @@ const kobeBase = (window.HYOGO_AREAS || []).find((area) => area.name === "神戸
   rent: { studio: 5.8, oneLdk: 8.2, twoLdk: 10.4 }
 };
 
+// listedCompanies is counted by head-office municipality from J-LiC search results for Hyogo.
+const areaStats = {
+  神戸市東灘区: { population: 214000, householdIncome: 570, listedCompanies: 4 },
+  神戸市灘区: { population: 136000, householdIncome: 540, listedCompanies: 2 },
+  神戸市兵庫区: { population: 106000, householdIncome: 430, listedCompanies: 3 },
+  神戸市長田区: { population: 94000, householdIncome: 390, listedCompanies: 2 },
+  神戸市須磨区: { population: 156000, householdIncome: 450, listedCompanies: 2 },
+  神戸市垂水区: { population: 214000, householdIncome: 455, listedCompanies: 0 },
+  神戸市北区: { population: 208000, householdIncome: 455, listedCompanies: 0 },
+  神戸市中央区: { population: 148000, householdIncome: 520, listedCompanies: 41 },
+  神戸市西区: { population: 236000, householdIncome: 470, listedCompanies: 0 },
+  姫路市: { population: 525000, householdIncome: 430, listedCompanies: 11 },
+  尼崎市: { population: 455000, householdIncome: 410, listedCompanies: 16 },
+  明石市: { population: 306000, householdIncome: 455, listedCompanies: 4 },
+  西宮市: { population: 485000, householdIncome: 560, listedCompanies: 5 },
+  洲本市: { population: 41000, householdIncome: 360, listedCompanies: 0 },
+  芦屋市: { population: 94000, householdIncome: 720, listedCompanies: 1 },
+  伊丹市: { population: 198000, householdIncome: 470, listedCompanies: 3 },
+  相生市: { population: 28000, householdIncome: 380, listedCompanies: 0 },
+  豊岡市: { population: 76000, householdIncome: 360, listedCompanies: 0 },
+  加古川市: { population: 258000, householdIncome: 420, listedCompanies: 4 },
+  赤穂市: { population: 45000, householdIncome: 375, listedCompanies: 0 },
+  西脇市: { population: 38000, householdIncome: 360, listedCompanies: 0 },
+  宝塚市: { population: 224000, householdIncome: 520, listedCompanies: 3 },
+  三木市: { population: 74000, householdIncome: 385, listedCompanies: 0 },
+  高砂市: { population: 86000, householdIncome: 410, listedCompanies: 1 },
+  川西市: { population: 151000, householdIncome: 500, listedCompanies: 0 },
+  小野市: { population: 47000, householdIncome: 385, listedCompanies: 0 },
+  三田市: { population: 106000, householdIncome: 500, listedCompanies: 0 },
+  加西市: { population: 42000, householdIncome: 370, listedCompanies: 0 },
+  丹波篠山市: { population: 39000, householdIncome: 375, listedCompanies: 0 },
+  養父市: { population: 22000, householdIncome: 340, listedCompanies: 0 },
+  丹波市: { population: 61000, householdIncome: 360, listedCompanies: 0 },
+  南あわじ市: { population: 44000, householdIncome: 350, listedCompanies: 1 },
+  朝来市: { population: 28000, householdIncome: 350, listedCompanies: 0 },
+  淡路市: { population: 42000, householdIncome: 350, listedCompanies: 0 },
+  宍粟市: { population: 35000, householdIncome: 345, listedCompanies: 0 },
+  加東市: { population: 40000, householdIncome: 390, listedCompanies: 1 },
+  たつの市: { population: 73000, householdIncome: 385, listedCompanies: 3 },
+  猪名川町: { population: 29000, householdIncome: 480, listedCompanies: 0 },
+  多可町: { population: 19000, householdIncome: 345, listedCompanies: 0 },
+  稲美町: { population: 30000, householdIncome: 395, listedCompanies: 0 },
+  播磨町: { population: 34000, householdIncome: 410, listedCompanies: 1 },
+  市川町: { population: 11000, householdIncome: 340, listedCompanies: 0 },
+  福崎町: { population: 19000, householdIncome: 370, listedCompanies: 0 },
+  神河町: { population: 10000, householdIncome: 335, listedCompanies: 0 },
+  太子町: { population: 34000, householdIncome: 395, listedCompanies: 0 },
+  上郡町: { population: 14000, householdIncome: 345, listedCompanies: 0 },
+  佐用町: { population: 15000, householdIncome: 335, listedCompanies: 0 },
+  香美町: { population: 16000, householdIncome: 335, listedCompanies: 0 },
+  新温泉町: { population: 13000, householdIncome: 335, listedCompanies: 0 }
+};
+
+const chainStatKeys = [
+  "homeCenters",
+  "mcdonalds",
+  "yoshinoya",
+  "sukiya",
+  "matsuya",
+  "saizeriya",
+  "cheapChainTotal",
+  "hospitals",
+  "clinics",
+  "medicalTotal"
+];
+
+for (const stats of Object.values(areaStats)) {
+  for (const key of chainStatKeys) {
+    stats[key] = null;
+  }
+}
+
+const areaGeometries = {};
+const hyogoOverpassBBox = [34.18, 133.98, 35.82, 135.98];
+const chainQueryEndpoint = "https://overpass-api.de/api/interpreter";
+let chainStatsLoading = false;
+let chainStatsLoaded = false;
+let medicalStatsLoading = false;
+let medicalStatsLoaded = false;
+
+const condoPriceByArea = window.HYOGO_CONDO_PRICES || {};
+
+function withAreaStats(area) {
+  return {
+    ...area,
+    stats: areaStats[area.name] || { population: null, householdIncome: null, listedCompanies: null }
+  };
+}
+
 const areaData = [
   ...kobeWards.map(([name, rentRate, safety, commerce, access, tags]) => {
     const [lat, lng] = kobeCentroids[name];
@@ -51,7 +140,7 @@ const areaData = [
     };
   }),
   ...baseAreas
-];
+].map(withAreaStats);
 
 const regionDefaults = {
   神戸: {
@@ -467,6 +556,12 @@ const metricMeta = {
   commerce: { label: "商業", unit: "10段階評価" },
   disaster: { label: "災害危険度", unit: "10段階評価" },
   dailyShopping: { label: "日常買物", unit: "10段階評価" },
+  cheapChains: { label: "安価チェーン密度", unit: "10段階評価" },
+  residentTax: { label: "住民税負担", unit: "10段階評価" },
+  childcare: { label: "子育て支援", unit: "10段階評価" },
+  hospitals: { label: "病院（推定）", unit: "10段階評価" },
+  landPrice: { label: "土地価格", unit: "10段階評価" },
+  condoPrice: { label: "マンション価格", unit: "10段階評価" },
   overall: { label: "総合", unit: "10段階評価" },
   lifestyle: { label: "住環境バランス", unit: "10段階評価" }
 };
@@ -533,24 +628,20 @@ const state = {
   metric: "rentValue",
   bedroom: "oneLdk",
   selectedName: "神戸市中央区",
-  descending: false,
   query: "",
-  maxRent: 7.0,
-  commuteOnly: false
+  maxRent: 7.0
 };
 
 const elements = {
   map: document.querySelector("#map"),
   search: document.querySelector("#areaSearch"),
   tabs: document.querySelectorAll(".metric-tab"),
-  list: document.querySelector("#areaList"),
-  resultCount: document.querySelector("#resultCount"),
   metricUnit: document.querySelector("#metricUnit"),
-  sortToggle: document.querySelector("#sortToggle"),
-  commuteFilter: document.querySelector("#commuteFilter"),
   resetView: document.querySelector("#resetView"),
   legend: document.querySelector("#legend"),
   mapStatus: document.querySelector("#mapStatus"),
+  railLegend: document.querySelector("#railLegend"),
+  metricColorHelp: document.querySelector("#metricColorHelp"),
   rentRange: document.querySelector("#rentRange"),
   rentRangeValue: document.querySelector("#rentRangeValue"),
   bedroomTabs: document.querySelectorAll(".bedroom-tab"),
@@ -561,10 +652,11 @@ const elements = {
   rentStudioValue: document.querySelector("#rentStudioValue"),
   rentOneLdkValue: document.querySelector("#rentOneLdkValue"),
   rentTwoLdkValue: document.querySelector("#rentTwoLdkValue"),
+  populationValue: document.querySelector("#populationValue"),
+  incomeValue: document.querySelector("#incomeValue"),
+  listedCompanyValue: document.querySelector("#listedCompanyValue"),
   safetyValue: document.querySelector("#safetyValue"),
-  accessValue: document.querySelector("#accessValue"),
   commerceValue: document.querySelector("#commerceValue"),
-  commuteValue: document.querySelector("#commuteValue"),
   disasterValue: document.querySelector("#disasterValue"),
   supermarketValue: document.querySelector("#supermarketValue"),
   convenienceValue: document.querySelector("#convenienceValue"),
@@ -576,30 +668,191 @@ const elements = {
   electronicsValue: document.querySelector("#electronicsValue"),
   izakayaValue: document.querySelector("#izakayaValue"),
   restaurantValue: document.querySelector("#restaurantValue"),
+  residentTaxValue: document.querySelector("#residentTaxValue"),
+  childcareValue: document.querySelector("#childcareValue"),
+  hospitalValue: document.querySelector("#hospitalValue"),
+  landPriceValue: document.querySelector("#landPriceValue"),
+  condoPriceValue: document.querySelector("#condoPriceValue"),
   rentInsight: document.querySelector("#rentInsight"),
   safetyInsight: document.querySelector("#safetyInsight"),
-  accessInsight: document.querySelector("#accessInsight"),
   disasterInsight: document.querySelector("#disasterInsight"),
   shoppingInsight: document.querySelector("#shoppingInsight"),
   retailInsight: document.querySelector("#retailInsight"),
   lifestyleValue: document.querySelector("#lifestyleValue"),
   lifestyleInsight: document.querySelector("#lifestyleInsight"),
-  routeRow: document.querySelector("#routeRow"),
-  stationList: document.querySelector("#stationList"),
   storeGrid: document.querySelector("#storeGrid"),
   retailGrid: document.querySelector("#retailGrid"),
+  chainGrid: document.querySelector("#chainGrid"),
+  cheapChainSummary: document.querySelector("#cheapChainSummary"),
   commentForm: document.querySelector("#commentForm"),
   commentInput: document.querySelector("#commentInput"),
   commentList: document.querySelector("#commentList"),
   detailPanel: document.querySelector("#detailPanel"),
+  selectedAreaDetail: document.querySelector("#selectedAreaDetail"),
+  popularList: document.querySelector("#popularList"),
   selectedSummary: document.querySelector("#selectedSummary"),
-  tagRow: document.querySelector("#tagRow")
+  tagRow: document.querySelector("#tagRow"),
+  zoomReset: document.querySelector("#zoomReset")
 };
 
 let map;
 let boundaryLayer;
+let labelLayer;
 let svgMapLayer;
+let stationLayer;
+let svgStationLayer;
+let isLeafletMapActive = false;
+let mapMinZoom = null;
 const commentStorageKey = "hyogoAreaComments";
+const svgMapView = {
+  minX: 360,
+  minY: 35,
+  maxX: 1120,
+  maxY: 915,
+  // More zoomed-in initial view so the map feels larger on load.
+  initial: { x: 460, y: 159, w: 560, h: 672 }
+};
+let svgZoomController = null;
+const lockMapPan = true;
+
+const stationSystems = {
+  jr: { label: "JR", color: "#1a5fd6", minZoomShow: 10, minZoomLabel: 11 },
+  hankyu: { label: "阪急", color: "#6b4a2b", minZoomShow: 11, minZoomLabel: 12 },
+  hanshin: { label: "阪神", color: "#f2c400", minZoomShow: 11, minZoomLabel: 12 },
+  sanyo: { label: "山陽", color: "#d84b3f", minZoomShow: 11, minZoomLabel: 12 }
+};
+
+// 駅座標は「路線図（rosenzu.net）」の緯度経度一覧を元にしています。
+const jrKobeStations = [
+  { name: "尼崎", lat: 34.731629, lng: 135.431687 },
+  { name: "立花", lat: 34.737961, lng: 135.399121 },
+  { name: "甲子園口", lat: 34.738952, lng: 135.374704 },
+  { name: "西宮", lat: 34.738763, lng: 135.347864 },
+  { name: "さくら夙川", lat: 34.738988, lng: 135.331046 },
+  { name: "芦屋", lat: 34.734243, lng: 135.30707 },
+  { name: "甲南山手", lat: 34.730583, lng: 135.292427 },
+  { name: "摂津本山", lat: 34.726683, lng: 135.276448 },
+  { name: "住吉", lat: 34.7197379, lng: 135.2620131 },
+  { name: "六甲道", lat: 34.714989, lng: 135.238507 },
+  { name: "摩耶", lat: 34.708667, lng: 135.225167 },
+  { name: "灘", lat: 34.706073, lng: 135.216439 },
+  { name: "三ノ宮", lat: 34.694835, lng: 135.194944 },
+  { name: "元町", lat: 34.689569, lng: 135.187373 },
+  { name: "神戸", lat: 34.679526, lng: 135.178021 },
+  { name: "兵庫", lat: 34.668379, lng: 135.164667 },
+  { name: "新長田", lat: 34.657574, lng: 135.145124 },
+  { name: "鷹取", lat: 34.651339, lng: 135.135203 },
+  { name: "須磨海浜公園", lat: 34.647192, lng: 135.126623 },
+  { name: "須磨", lat: 34.642273, lng: 135.112894 },
+  { name: "塩屋", lat: 34.633693, lng: 135.08253 },
+  { name: "垂水", lat: 34.62953, lng: 135.05363 },
+  { name: "舞子", lat: 34.633484, lng: 135.033773 },
+  { name: "朝霧", lat: 34.644394, lng: 135.017488 },
+  { name: "明石", lat: 34.648748, lng: 134.993265 },
+  { name: "西明石", lat: 34.666855, lng: 134.960542 },
+  { name: "大久保", lat: 34.682297, lng: 134.938861 },
+  { name: "魚住", lat: 34.696487, lng: 134.905975 },
+  { name: "土山", lat: 34.720485, lng: 134.888874 },
+  { name: "東加古川", lat: 34.745852, lng: 134.869039 },
+  { name: "加古川", lat: 34.767844, lng: 134.839416 },
+  { name: "宝殿", lat: 34.784545, lng: 134.81243 },
+  { name: "曽根", lat: 34.793273, lng: 134.769915 },
+  { name: "ひめじ別所", lat: 34.805552, lng: 134.753251 },
+  { name: "御着", lat: 34.816944, lng: 134.735589 },
+  { name: "東姫路", lat: 34.824361, lng: 134.712472 },
+  { name: "姫路", lat: 34.827642, lng: 134.690849 }
+].map((s) => ({
+  ...s,
+  system: "jr",
+  lines: ["JR神戸線"],
+  ...stationSystems.jr
+}));
+
+const hanshinMainStations = [
+  { name: "尼崎", lat: 34.7182889, lng: 135.4167953 },
+  { name: "出屋敷", lat: 34.718224, lng: 135.40454 },
+  { name: "尼崎センタープール前", lat: 34.717991, lng: 135.395194 },
+  { name: "武庫川", lat: 34.718068, lng: 135.383687 },
+  { name: "鳴尾・武庫川女子大前", lat: 34.719684, lng: 135.37036 },
+  { name: "甲子園", lat: 34.723898, lng: 135.363191 },
+  { name: "久寿川", lat: 34.726956, lng: 135.356838 },
+  { name: "今津", lat: 34.731008, lng: 135.351364 },
+  { name: "西宮", lat: 34.7368742, lng: 135.338028 },
+  { name: "香櫨園", lat: 34.734444, lng: 135.32916 },
+  { name: "打出", lat: 34.731677, lng: 135.315961 },
+  { name: "芦屋", lat: 34.7277357, lng: 135.3035477 },
+  { name: "深江", lat: 34.722886, lng: 135.29163 },
+  { name: "青木", lat: 34.717367, lng: 135.281318 },
+  { name: "魚崎", lat: 34.712602, lng: 135.2692991 },
+  { name: "住吉", lat: 34.712917, lng: 135.261683 },
+  { name: "御影", lat: 34.714842, lng: 135.255626 },
+  { name: "石屋川", lat: 34.713334, lng: 135.249501 },
+  { name: "新在家", lat: 34.710618, lng: 135.24059 },
+  { name: "大石", lat: 34.707623, lng: 135.231038 },
+  { name: "西灘", lat: 34.705982, lng: 135.224978 },
+  { name: "岩屋", lat: 34.704043, lng: 135.21777 },
+  { name: "春日野道", lat: 34.6995653, lng: 135.2086104 },
+  { name: "神戸三宮", lat: 34.693502, lng: 135.195104 },
+  { name: "元町", lat: 34.689569, lng: 135.187373 }
+].map((s) => ({
+  ...s,
+  system: "hanshin",
+  lines: ["阪神本線"],
+  ...stationSystems.hanshin
+}));
+
+const sanyoMainStations = [
+  { name: "西代", lat: 34.662374, lng: 135.144085 },
+  { name: "板宿", lat: 34.66006, lng: 135.133403 },
+  { name: "東須磨", lat: 34.655138, lng: 135.127531 },
+  { name: "月見山", lat: 34.649836, lng: 135.121579 },
+  { name: "須磨寺", lat: 34.646447, lng: 135.116244 },
+  { name: "山陽須磨", lat: 34.643423, lng: 135.112064 },
+  { name: "須磨浦公園", lat: 34.637862, lng: 135.100351 },
+  { name: "山陽塩屋", lat: 34.633693, lng: 135.08253 },
+  { name: "滝の茶屋", lat: 34.630918, lng: 135.072048 },
+  { name: "東垂水", lat: 34.629177, lng: 135.062929 },
+  { name: "山陽垂水", lat: 34.62953, lng: 135.05363 },
+  { name: "霞ヶ丘", lat: 34.630832, lng: 135.042345 },
+  { name: "舞子公園", lat: 34.634109, lng: 135.034304 },
+  { name: "西舞子", lat: 34.638489, lng: 135.028284 },
+  { name: "大蔵谷", lat: 34.646535, lng: 135.008022 },
+  { name: "人丸前", lat: 34.647548, lng: 135.002075 },
+  { name: "山陽明石", lat: 34.648748, lng: 134.993265 },
+  { name: "西新町", lat: 34.6497, lng: 134.981074 },
+  { name: "林崎松江海岸", lat: 34.652022, lng: 134.965242 },
+  { name: "藤江", lat: 34.663688, lng: 134.947349 },
+  { name: "中八木", lat: 34.670721, lng: 134.936086 },
+  { name: "江井ヶ島", lat: 34.6791583, lng: 134.9192526 },
+  { name: "西江井ヶ島", lat: 34.6858724, lng: 134.9076948 },
+  { name: "山陽魚住", lat: 34.689343, lng: 134.901681 },
+  { name: "東二見", lat: 34.700017, lng: 134.888351 },
+  { name: "西二見", lat: 34.707189, lng: 134.876855 },
+  { name: "播磨町", lat: 34.716563, lng: 134.8681 },
+  { name: "別府", lat: 34.730236, lng: 134.85058 },
+  { name: "浜の宮", lat: 34.740857, lng: 134.833812 },
+  { name: "尾上の松", lat: 34.748676, lng: 134.821171 },
+  { name: "高砂", lat: 34.751853, lng: 134.803215 },
+  { name: "荒井", lat: 34.75786, lng: 134.793816 },
+  { name: "伊保", lat: 34.767343, lng: 134.786731 },
+  { name: "山陽曽根", lat: 34.775547, lng: 134.772882 },
+  { name: "大塩", lat: 34.779332, lng: 134.757906 },
+  { name: "的形", lat: 34.779887, lng: 134.742053 },
+  { name: "八家", lat: 34.784147, lng: 134.721886 },
+  { name: "白浜の宮", lat: 34.786839, lng: 134.707273 },
+  { name: "妻鹿", lat: 34.79228, lng: 134.692961 },
+  { name: "飾磨", lat: 34.799798, lng: 134.674849 },
+  { name: "亀山", lat: 34.810888, lng: 134.676857 },
+  { name: "手柄", lat: 34.819962, lng: 134.681395 },
+  { name: "山陽姫路", lat: 34.828822, lng: 134.689799 }
+].map((s) => ({
+  ...s,
+  system: "sanyo",
+  lines: ["山陽電鉄本線"],
+  ...stationSystems.sanyo
+}));
+
+const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations];
 
 function roundRent(value) {
   return Math.round(value * 10) / 10;
@@ -701,6 +954,33 @@ function hasDiscountStore(area) {
   return discountStoreRating(area) >= 6;
 }
 
+function cheapChainDensityPer10k(area) {
+  const pop = area.stats?.population;
+  const total = area.stats?.cheapChainTotal;
+  if (pop == null || pop <= 0 || total == null) return null;
+  return (total / pop) * 10000;
+}
+
+function inferredCheapChains(area) {
+  // Fallback heuristic when Overpass counts are missing (e.g. boundaries not loaded / request failed).
+  // Calibrated to produce small ints for rural areas, larger for urban.
+  const base = area.commerce * 0.06 + area.access * 0.03 + (area.region.includes("阪神") ? 1.2 : 0);
+  return Math.max(0, Math.round(base));
+}
+
+function cheapChainRating(area) {
+  const density = cheapChainDensityPer10k(area);
+  if (density == null) {
+    // Use heuristic as last resort so the metric is still selectable.
+    const inferred = inferredCheapChains(area);
+    return clamp(Math.round(inferred / 1.4) + 1, 1, 10);
+  }
+  // Typical density range (per 1万人) is small; use a gentle curve.
+  // 0.2 -> 2, 0.6 -> 5, 1.2 -> 8, 1.8+ -> 10
+  const score = 1 + Math.round(9 * (1 - Math.exp(-density / 0.55)));
+  return clamp(score, 1, 10);
+}
+
 const retailOverrides = {
   神戸市中央区: { uniqlo: "あり", gu: "あり", electronics: "あり", izakaya: 520, restaurants: 1800 },
   神戸市東灘区: { uniqlo: "あり", gu: "あり", electronics: "あり", izakaya: 110, restaurants: 520 },
@@ -754,12 +1034,185 @@ function countDisplay(count) {
   return `推定${count}件`;
 }
 
+function actualCountDisplay(count) {
+  return count == null ? "--店" : `${count}店`;
+}
+
+function actualFacilityDisplay(count) {
+  return count == null ? "--件" : `${count}件`;
+}
+
+function cheapChainSummary(area) {
+  const stats = area.stats || {};
+  const values = [
+    ["マクドナルド", stats.mcdonalds],
+    ["吉野家", stats.yoshinoya],
+    ["すき家", stats.sukiya],
+    ["松屋", stats.matsuya],
+    ["サイゼリヤ", stats.saizeriya]
+  ];
+
+  const anyLoading = values.some(([, count]) => count == null);
+  const found = values.filter(([, count]) => typeof count === "number" && count > 0).map(([label]) => label);
+  const none =
+    values.every(([, count]) => typeof count === "number") && values.every(([, count]) => (count ?? 0) === 0);
+
+  if (anyLoading) {
+    return "安価チェーンは集計中です（読み込み後に反映されます）。";
+  }
+  if (found.length) {
+    return `この市町村で見つかった安価チェーン: ${found.join("・")}。`;
+  }
+  if (none) {
+    return "この市町村では対象の安価チェーンが少なめ（0件）として集計されています。近隣市の利用も含めて確認してください。";
+  }
+  return "安価チェーンは状況を要確認です。";
+}
+
+function populationDisplay(population) {
+  if (population == null) return "約--万人";
+  if (population >= 10000) return `約${(population / 10000).toFixed(1)}万人`;
+  return `約${population.toLocaleString()}人`;
+}
+
+function incomeDisplay(income) {
+  return income == null ? "約--万円" : `約${income}万円`;
+}
+
+function listedCompanyDisplay(count) {
+  return count == null ? "--社" : `${count}社`;
+}
+
+function textMatchesAny(text, patterns) {
+  const normalized = text.toLowerCase();
+  return patterns.some((pattern) => normalized.includes(pattern.toLowerCase()));
+}
+
+function chainText(tags = {}) {
+  return [tags.name, tags.brand, tags.operator].filter(Boolean).join(" ");
+}
+
+const homeCenterPatterns = [
+  "コーナン",
+  "カインズ",
+  "Cainz",
+  "DCM",
+  "ナフコ",
+  "コメリ",
+  "ビバホーム",
+  "ムサシ",
+  "アヤハディオ",
+  "ジュンテンドー",
+  "ロイヤルホームセンター",
+  "ホームセンター"
+];
+
+const restaurantChainPatterns = {
+  mcdonalds: ["マクドナルド", "McDonald", "McDonald's", "McDonalds"],
+  yoshinoya: ["吉野家", "Yoshinoya", "YOSHINOYA"],
+  sukiya: ["すき家", "Sukiya", "SUKIYA"],
+  matsuya: ["松屋", "Matsuya", "MATSUYA"],
+  saizeriya: ["サイゼリヤ", "サイゼリア", "Saizeriya", "SAIZERIYA"]
+};
+
+function classifyChain(tags = {}) {
+  const text = chainText(tags);
+  if (tags.shop === "doityourself" || tags.shop === "hardware" || textMatchesAny(text, homeCenterPatterns)) {
+    return "homeCenters";
+  }
+  if (textMatchesAny(text, restaurantChainPatterns.mcdonalds)) return "mcdonalds";
+  if (textMatchesAny(text, restaurantChainPatterns.yoshinoya)) return "yoshinoya";
+  if (textMatchesAny(text, restaurantChainPatterns.sukiya)) return "sukiya";
+  if (textMatchesAny(text, restaurantChainPatterns.matsuya)) return "matsuya";
+  if (textMatchesAny(text, restaurantChainPatterns.saizeriya)) return "saizeriya";
+  return null;
+}
+
+function residentTaxRating(area) {
+  // Proxy: higher household income => higher resident tax burden.
+  const income = area.stats?.householdIncome;
+  if (income == null) {
+    // fallback: higher rentScore => higher affordability => often higher income areas.
+    return clamp(Math.round((ratingFrom100(area.commerce) + ratingFrom100(area.access)) / 2), 1, 10);
+  }
+  // 330万円台 -> 3, 450 -> 5, 570 -> 7, 720 -> 10
+  const score = 1 + Math.round(((income - 320) / 45));
+  return clamp(score, 1, 10);
+}
+
+function childcareSupportRating(area) {
+  // Proxy: safety + lifestyle + access; coastal/urban slightly better access, but not always.
+  const base = (ratingFrom100(area.safety) + ratingFrom100(area.lifestyle) + ratingFrom100(area.access)) / 3;
+  const bonus = area.name.startsWith("神戸市") ? 1 : 0;
+  return clamp(Math.round(base + bonus), 1, 10);
+}
+
+function hospitalEstimate(area) {
+  const medical = area.stats || {};
+  if (medical.medicalTotal != null) return medical.medicalTotal;
+  const pop = area.stats?.population;
+  if (pop == null) return null;
+  // fallback only when OSM counts are missing
+  const uplift = area.commerce >= 80 ? 10 : area.commerce >= 70 ? 5 : 0;
+  return Math.max(1, Math.round((pop / 10000) * 2.2 + uplift));
+}
+
+function hospitalRating(area) {
+  const count = hospitalEstimate(area);
+  if (count == null) return clamp(Math.round((ratingFrom100(area.commerce) + ratingFrom100(area.access)) / 2), 1, 10);
+  // 10->4, 30->7, 60->9, 90->10
+  const score = 1 + Math.round(9 * (1 - Math.exp(-count / 28)));
+  return clamp(score, 1, 10);
+}
+
+function landPriceRating(area) {
+  // Proxy: higher rent + higher commerce tends to mean expensive land.
+  // Here we show "地価の手頃さ" (higher is cheaper).
+  const rentMan = selectedRent(area);
+  const rentExpensive = clamp(Math.round((rentMan - 5.0) * 2.2), 0, 10);
+  const commerceExpensive = clamp(Math.round((ratingFrom100(area.commerce) - 5) * 1.6), 0, 10);
+  const expensive = clamp(Math.round((rentExpensive + commerceExpensive) / 2), 0, 10);
+  return clamp(10 - expensive, 1, 10);
+}
+
+function condoPriceRating(area) {
+  // Proxy: "マンション価格の手頃さ" (higher is cheaper).
+  // Stronger penalty for high rent & high commerce; mild penalty for high access.
+  if (condoPriceByArea[area.name]?.avgPriceManYen != null) {
+    // Real data: higher avg price => lower affordability score.
+    const price = condoPriceByArea[area.name].avgPriceManYen;
+    // 1500万円 -> 10, 2500 -> 7, 3500 -> 4, 4500+ -> 1
+    const expensive = clamp(Math.round((price - 1500) / 300) + 1, 0, 10);
+    return clamp(11 - expensive, 1, 10);
+  }
+  const rentMan = selectedRent(area);
+  const rentExpensive = clamp(Math.round((rentMan - 5.0) * 2.6), 0, 10);
+  const commerceExpensive = clamp(Math.round((ratingFrom100(area.commerce) - 5) * 1.9), 0, 10);
+  const accessExpensive = clamp(Math.round((ratingFrom100(area.access) - 5) * 0.9), 0, 10);
+  const expensive = clamp(Math.round((rentExpensive * 0.5 + commerceExpensive * 0.35 + accessExpensive * 0.15)), 0, 10);
+  return clamp(10 - expensive, 1, 10);
+}
+
+function condoPriceDisplay(area) {
+  const entry = condoPriceByArea[area.name];
+  if (!entry || entry.avgPriceManYen == null) return `${condoPriceRating(area)}/10`;
+  const sampleText = entry.sampleSize ? `（${entry.sampleSize}件）` : "";
+  const periodText = entry.period ? ` ${entry.period}` : "";
+  return `平均${entry.avgPriceManYen.toLocaleString()}万円${sampleText}${periodText}`;
+}
+
 function metricValue(area, metric = state.metric) {
   if (metric === "rentValue") return selectedRent(area);
   if (metric === "rentScore") return ratingFrom100(rentScore(area));
   if (metric === "overall") return overall(area);
   if (metric === "disaster") return disasterRisk(area);
   if (metric === "dailyShopping") return dailyShoppingRating(area);
+  if (metric === "cheapChains") return cheapChainRating(area);
+  if (metric === "residentTax") return residentTaxRating(area);
+  if (metric === "childcare") return childcareSupportRating(area);
+  if (metric === "hospitals") return hospitalRating(area);
+  if (metric === "landPrice") return landPriceRating(area);
+  if (metric === "condoPrice") return condoPriceRating(area);
   if (metric === "lifestyle") return ratingFrom100(area.lifestyle);
   return ratingFrom100(area[metric]);
 }
@@ -794,22 +1247,6 @@ function lifestyleInsight(area) {
   return "バランス面ではやや課題あり。通勤・買物・防災の優先順位を決めてから物件検索するとミスマッチを防げます。";
 }
 
-function accessInsight(area) {
-  const accessText =
-    area.access >= 82
-      ? "交通アクセスは強い"
-      : area.access >= 65
-        ? "交通アクセスは標準的"
-        : "交通アクセスは弱め";
-  const commerceText =
-    area.commerce >= 82
-      ? "商業施設も充実"
-      : area.commerce >= 60
-        ? "日常商業は確保しやすい"
-        : "商業施設は限定的";
-  return `${accessText}で、${commerceText}です。通勤先と買い物動線をセットで見ると判断しやすいです。`;
-}
-
 function disasterInsight(area) {
   const risk = disasterRisk(area);
   if (risk >= 8) return "災害危険度は高めの仮評価です。津波、浸水、土砂災害、雪、避難所距離を必ずハザードマップで確認してください。";
@@ -838,34 +1275,6 @@ function storeStateText(stateLabel) {
   if (stateLabel === "あり") return "あり";
   if (stateLabel === "なし") return "なし";
   return "要確認";
-}
-
-function renderRoutes(area) {
-  const { routes } = profileFor(area);
-  if (!routes.length) {
-    elements.routeRow.innerHTML = "<span>主要路線は要確認</span>";
-    return;
-  }
-  elements.routeRow.innerHTML = routes.map((route) => `<span>${route}</span>`).join("");
-}
-
-function renderStations(area) {
-  const { stations } = profileFor(area);
-  if (!stations.length) {
-    elements.stationList.innerHTML = '<div class="station-item"><strong>おすすめ駅は要確認</strong><small>駅距離と路線構成を個別に確認してください。</small></div>';
-    return;
-  }
-  elements.stationList.innerHTML = stations
-    .slice(0, 3)
-    .map(
-      (station) => `
-        <div class="station-item">
-          <strong>${station.name}</strong>
-          <small>${station.reason}</small>
-        </div>
-      `
-    )
-    .join("");
 }
 
 function renderStoreGrid(area) {
@@ -912,6 +1321,30 @@ function renderRetailGrid(area) {
           <strong>${label}</strong>
           <span>${stateLabel}</span>
           <small>${note}</small>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderChainGrid(area) {
+  const chainStats = area.stats || {};
+  const items = [
+    ["ホームセンター", chainStats.homeCenters],
+    ["マクドナルド", chainStats.mcdonalds],
+    ["吉野家", chainStats.yoshinoya],
+    ["すき家", chainStats.sukiya],
+    ["松屋", chainStats.matsuya],
+    ["サイゼリヤ", chainStats.saizeriya],
+    ["安価チェーン合計", chainStats.cheapChainTotal]
+  ];
+  elements.chainGrid.innerHTML = items
+    .map(
+      ([label, count]) => `
+        <div class="store-pill" data-state="count">
+          <strong>${actualCountDisplay(count)}</strong>
+          <span>${label}</span>
+          <small>${count == null ? "集計中" : "実数"}</small>
         </div>
       `
     )
@@ -1017,13 +1450,33 @@ function filteredAreas() {
         !normalized ||
         `${area.name} ${area.region} ${area.tags.join(" ")}`.toLowerCase().includes(normalized);
       const matchesRent = selectedRent(area) <= state.maxRent;
-      const matchesCommute = !state.commuteOnly || area.commute >= 80;
-      return matchesQuery && matchesRent && matchesCommute;
+      return matchesQuery && matchesRent;
     })
     .sort((a, b) => {
       const diff = metricValue(a) - metricValue(b);
-      return state.descending ? -diff : diff;
+      return state.metric === "rentValue" ? diff : -diff;
     });
+}
+
+function popularityScore(area) {
+  const rentBalance = rentScore(area);
+  const disasterSafety = 100 - disasterRisk(area) * 10;
+  return Math.round(area.lifestyle * 0.28 + area.safety * 0.22 + area.commerce * 0.2 + rentBalance * 0.2 + disasterSafety * 0.1);
+}
+
+function popularityReason(area) {
+  const reasons = [];
+  if (area.lifestyle >= 82) reasons.push("住環境");
+  if (area.safety >= 78) reasons.push("治安");
+  if (area.commerce >= 80) reasons.push("買物");
+  if (selectedRent(area) <= 6.5) reasons.push("家賃");
+  return reasons.slice(0, 2).join("・") || "バランス";
+}
+
+function popularAreas() {
+  return [...areaData]
+    .sort((a, b) => popularityScore(b) - popularityScore(a))
+    .slice(0, 10);
 }
 
 function normalizeBoundaryName(feature) {
@@ -1128,6 +1581,13 @@ const mapLabelOffsets = {
   稲美町: [-82, -18]
 };
 
+const mapImageTransform = {
+  x: -28,
+  y: -18,
+  scaleX: 1672 / 1600,
+  scaleY: 941 / 900
+};
+
 function mapLabelPlacement(area, x, y) {
   if (insetLabelPositions[area.name]) {
     const [labelX, labelY] = insetLabelPositions[area.name];
@@ -1158,14 +1618,27 @@ function featureStyle(area) {
 
 function updateBoundaryStyles() {
   updateSvgBoundaryStyles();
-  if (!boundaryLayer) return;
-  boundaryLayer.eachLayer((layer) => {
+  boundaryLayer?.eachLayer((layer) => {
     const area = layer.feature.__areaData;
     if (!area) return;
     layer.setStyle(featureStyle(area));
     if (area.name === state.selectedName) {
       layer.bringToFront();
     }
+  });
+  labelLayer?.eachLayer((layer) => {
+    const area = layer.feature?.__areaData;
+    if (!area) return;
+    const selected = area.name === state.selectedName;
+    layer.setStyle({
+      radius: selected ? 6 : 4,
+      fillColor: selected ? "#17211f" : colorForMetric(metricValue(area)),
+      color: "#ffffff",
+      weight: selected ? 2.4 : 1.6,
+      fillOpacity: selected ? 0.95 : 0.85
+    });
+    layer.getTooltip()?.getElement()?.classList.toggle("selected", selected);
+    if (selected) layer.bringToFront();
   });
 }
 
@@ -1174,12 +1647,18 @@ function projectArea(area) {
   const lngMax = 135.47;
   const latMin = 34.2;
   const latMax = 35.68;
-  const x = 450 + ((area.lng - lngMin) / (lngMax - lngMin)) * 560;
-  const y = 42 + ((latMax - area.lat) / (latMax - latMin)) * 828;
+  const baseX = 450 + ((area.lng - lngMin) / (lngMax - lngMin)) * 560;
+  const baseY = 42 + ((latMax - area.lat) / (latMax - latMin)) * 828;
+  const x = clamp(baseX, 430, 1040);
+  const y = clamp(baseY, 36, 884);
   return {
-    x: clamp(x, 430, 1040),
-    y: clamp(y, 36, 884)
+    x: mapImageTransform.x + x * mapImageTransform.scaleX,
+    y: mapImageTransform.y + y * mapImageTransform.scaleY
   };
+}
+
+function projectLonLat(lng, lat) {
+  return projectArea({ lng, lat });
 }
 
 function updateSvgBoundaryStyles() {
@@ -1203,36 +1682,106 @@ function renderLegend() {
     left = "高リスク";
     right = "低リスク";
   }
+  const note =
+    state.metric === "rentValue"
+      ? "家賃は緑ほど安め"
+      : state.metric === "disaster"
+        ? "災害は緑ほど低リスク"
+        : "スコアは緑ほど高評価";
   elements.legend.innerHTML = `
-    <span>${left}</span>
-    <span class="legend-scale"></span>
-    <span>${right}</span>
+    <span class="legend-edge">${left}</span>
+    <span class="legend-scale" aria-hidden="true"></span>
+    <span class="legend-edge">${right}</span>
+    <span class="legend-note">${note}</span>
   `;
 }
 
-function renderList(areas) {
-  elements.resultCount.textContent = `${areas.length}件`;
-  elements.list.innerHTML = "";
+function renderRailLegend() {
+  if (!elements.railLegend) return;
+  const entries = Object.entries(stationSystems).filter(([, meta]) => meta?.label && meta?.color);
+  if (!entries.length) {
+    elements.railLegend.innerHTML = "";
+    return;
+  }
+  elements.railLegend.innerHTML = `
+    <div class="rail-legend-title">鉄道カラー</div>
+    <div class="rail-legend-items">
+      ${entries
+        .map(
+          ([key, meta]) => `
+            <div class="rail-legend-item" data-system="${key}">
+              <span class="rail-legend-swatch" style="--swatch:${meta.color}"></span>
+              <span>${meta.label}</span>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
 
-  areas.slice(0, 18).forEach((area) => {
-    const button = document.createElement("button");
-    const value = metricValue(area);
-    button.className = `area-item${area.name === state.selectedName ? " active" : ""}`;
-    button.type = "button";
-    button.innerHTML = `
-      <div>
-        <strong>${area.name}</strong>
-        <small>${area.region} / ${bedroomLabels[state.bedroom]} ${selectedRent(area).toFixed(1)}万円 / ${metricMeta[state.metric].label}: ${metricDisplay(area)}</small>
-      </div>
-      <span class="item-score" style="background:${colorForMetric(value)}">${state.metric === "rentValue" ? selectedRent(area).toFixed(1) : value}</span>
-    `;
-    button.addEventListener("click", () => selectArea(area.name, true, true));
-    elements.list.appendChild(button);
-  });
+function renderMetricColorHelp() {
+  if (!elements.metricColorHelp) return;
+  const metric = state.metric;
+
+  const labels =
+    metric === "rentValue"
+      ? { rose: "高い", amber: "やや高い", green: "安い", teal: "かなり安い" }
+      : metric === "disaster"
+        ? { rose: "高リスク", amber: "やや高", green: "標準", teal: "低リスク" }
+        : { rose: "低い", amber: "やや低い", green: "やや高い", teal: "高い" };
+
+  const rows = [
+    { color: "#bc4b5f", text: `赤=${labels.rose}` },
+    { color: "#d9822b", text: `橙=${labels.amber}` },
+    { color: "#5f9f6e", text: `黄緑=${labels.green}` },
+    { color: "#127c7a", text: `緑=${labels.teal}` }
+  ];
+
+  elements.metricColorHelp.innerHTML = `
+    <div class="metric-color-help">
+      <span class="metric-color-chip"><span class="metric-color-swatch" style="--swatch:${rows[0].color}"></span>${rows[0].text}</span>
+      <span class="metric-color-chip"><span class="metric-color-swatch" style="--swatch:${rows[1].color}"></span>${rows[1].text}</span>
+      <span class="metric-color-chip"><span class="metric-color-swatch" style="--swatch:${rows[2].color}"></span>${rows[2].text}</span>
+      <span class="metric-color-chip"><span class="metric-color-swatch" style="--swatch:${rows[3].color}"></span>${rows[3].text}</span>
+      <span class="metric-color-chip">（横にスワイプで指標切替）</span>
+    </div>
+  `;
+}
+
+function renderPopularRanking() {
+  if (!elements.popularList) return;
+  elements.popularList.innerHTML = popularAreas()
+    .map((area, index) => {
+      const selected = area.name === state.selectedName;
+      return `
+        <button class="popular-item${selected ? " active" : ""}" type="button" data-area-name="${area.name}">
+          <span class="popular-rank">${index + 1}</span>
+          <span>
+            <strong>${area.name}</strong>
+            <small>${popularityReason(area)} / ${bedroomLabels[state.bedroom]} ${selectedRent(area).toFixed(1)}万円</small>
+          </span>
+          <b>${popularityScore(area)}</b>
+        </button>
+      `;
+    })
+    .join("");
 }
 
 function scrollDetailIntoView() {
-  elements.detailPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const target = elements.selectedAreaDetail || elements.detailPanel;
+  if (!target) return;
+  target.setAttribute("tabindex", "-1");
+  const sidebar = document.querySelector(".sidebar");
+  if (sidebar && getComputedStyle(sidebar).display !== "contents") {
+    sidebar.scrollTo({
+      top: target.offsetTop - 8,
+      behavior: "smooth"
+    });
+  }
+  const top = target.getBoundingClientRect().top + window.scrollY - 8;
+  window.scrollTo({ top, behavior: "smooth" });
+  window.setTimeout(() => target.focus({ preventScroll: true }), 120);
 }
 
 function selectArea(name, moveMap = false, scrollDetail = false) {
@@ -1249,10 +1798,11 @@ function selectArea(name, moveMap = false, scrollDetail = false) {
   elements.rentStudioValue.textContent = `${area.rent.studio.toFixed(1)}万円`;
   elements.rentOneLdkValue.textContent = `${area.rent.oneLdk.toFixed(1)}万円`;
   elements.rentTwoLdkValue.textContent = `${area.rent.twoLdk.toFixed(1)}万円`;
+  elements.populationValue.textContent = populationDisplay(area.stats?.population);
+  elements.incomeValue.textContent = incomeDisplay(area.stats?.householdIncome);
+  elements.listedCompanyValue.textContent = listedCompanyDisplay(area.stats?.listedCompanies);
   elements.safetyValue.textContent = `${ratingFrom100(area.safety)}/10`;
-  elements.accessValue.textContent = `${ratingFrom100(area.access)}/10`;
   elements.commerceValue.textContent = `${ratingFrom100(area.commerce)}/10`;
-  elements.commuteValue.textContent = `${ratingFrom100(area.commute)}/10`;
   elements.lifestyleValue.textContent = `${ratingFrom100(area.lifestyle)}/10`;
   elements.disasterValue.textContent = `${disasterRisk(area)}/10`;
   elements.supermarketValue.textContent = `${supermarketRating(area)}/10`;
@@ -1266,34 +1816,48 @@ function selectArea(name, moveMap = false, scrollDetail = false) {
   elements.electronicsValue.textContent = retail.electronics;
   elements.izakayaValue.textContent = countDisplay(retail.izakaya);
   elements.restaurantValue.textContent = countDisplay(retail.restaurants);
+  if (elements.residentTaxValue) elements.residentTaxValue.textContent = `${residentTaxRating(area)}/10`;
+  if (elements.childcareValue) elements.childcareValue.textContent = `${childcareSupportRating(area)}/10`;
+  if (elements.landPriceValue) elements.landPriceValue.textContent = `${landPriceRating(area)}/10`;
+  if (elements.condoPriceValue) elements.condoPriceValue.textContent = condoPriceDisplay(area);
+  if (elements.hospitalValue) {
+    const stats = area.stats || {};
+    if (stats.medicalTotal != null) {
+      const suffix = stats.clinics != null && stats.hospitals != null ? `（病院${stats.hospitals}・診療所${stats.clinics}）` : "";
+      elements.hospitalValue.textContent = `${stats.medicalTotal}件${suffix}`;
+    } else {
+      const count = hospitalEstimate(area);
+      elements.hospitalValue.textContent = count == null ? "推定 --件" : `推定 ${count}件`;
+    }
+  }
   elements.selectedSummary.textContent = area.summary;
   elements.rentInsight.textContent = rentInsight(area);
   elements.safetyInsight.textContent = safetyInsight(area);
   elements.lifestyleInsight.textContent = lifestyleInsight(area);
-  elements.accessInsight.textContent = accessInsight(area);
   elements.disasterInsight.textContent = disasterInsight(area);
   elements.shoppingInsight.textContent = shoppingInsight(area);
   elements.retailInsight.textContent = retailInsight(area);
   elements.tagRow.innerHTML = area.tags.map((tag) => `<span>${tag}</span>`).join("");
-  renderRoutes(area);
-  renderStations(area);
   renderStoreGrid(area);
   renderRetailGrid(area);
+  renderChainGrid(area);
+  if (elements.cheapChainSummary) {
+    elements.cheapChainSummary.textContent = cheapChainSummary(area);
+  }
   elements.commentInput.value = "";
   renderComments(area.name);
+  renderPopularRanking();
 
   if (moveMap && map) {
     const layer = boundaryLayer?.getLayers?.().find((item) => item.feature.__areaData?.name === area.name);
     if (layer) {
       map.fitBounds(layer.getBounds().pad(0.25), { animate: true });
-      layer.openTooltip?.();
     }
   }
 
-  renderList(filteredAreas());
   updateBoundaryStyles();
   if (scrollDetail) {
-    window.requestAnimationFrame(scrollDetailIntoView);
+    window.setTimeout(scrollDetailIntoView, 80);
   }
 }
 
@@ -1301,6 +1865,73 @@ function setSelectedFromFeature(feature, moveMap = false, scrollDetail = false) 
   const area = feature.__areaData;
   if (!area) return;
   selectArea(area.name, moveMap, scrollDetail);
+}
+
+function pointInLayerPart(point, part) {
+  let inside = false;
+  for (let i = 0, j = part.length - 1; i < part.length; j = i++) {
+    const xi = part[i].x;
+    const yi = part[i].y;
+    const xj = part[j].x;
+    const yj = part[j].y;
+    const intersects = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInGeoRing(point, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersects = yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInGeometry(point, geometry) {
+  if (!geometry) return false;
+  if (geometry.type === "Polygon") {
+    const [outer, ...holes] = geometry.coordinates;
+    if (!pointInGeoRing(point, outer)) return false;
+    return !holes.some((hole) => pointInGeoRing(point, hole));
+  }
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.some((polygon) => pointInGeometry(point, { type: "Polygon", coordinates: polygon }));
+  }
+  return false;
+}
+
+function osmPointForElement(element) {
+  if (typeof element.lat === "number" && typeof element.lon === "number") {
+    return [element.lon, element.lat];
+  }
+  if (element.center && typeof element.center.lat === "number" && typeof element.center.lon === "number") {
+    return [element.center.lon, element.center.lat];
+  }
+  return null;
+}
+
+function osmtags(element) {
+  return element.tags || {};
+}
+
+function selectFeatureFromMapClick(event) {
+  if (!boundaryLayer) return;
+  let selectedFeature = null;
+  boundaryLayer.eachLayer((layer) => {
+    if (selectedFeature || !layer.getBounds?.().contains(event.latlng)) return;
+    const point = map.latLngToLayerPoint(event.latlng);
+    const parts = layer._parts || [];
+    const inside = parts.some((part) => pointInLayerPart(point, part));
+    if (inside) selectedFeature = layer.feature;
+  });
+  if (!selectedFeature) return;
+  setSelectedFromFeature(selectedFeature, false, true);
 }
 
 async function fetchWithTimeout(url, timeoutMs) {
@@ -1328,7 +1959,7 @@ function buildFallbackBoundaryLayer() {
       ...featureStyle(area)
     });
     circle.feature = feature;
-    circle.on("click", () => selectArea(area.name, true, true));
+    circle.on("click", () => selectArea(area.name, false, true));
     circle.bindTooltip(shortName(area.name), {
       permanent: true,
       direction: "center",
@@ -1337,24 +1968,208 @@ function buildFallbackBoundaryLayer() {
     layers.push(circle);
   });
   boundaryLayer?.remove();
+  labelLayer?.remove();
+  labelLayer = null;
   boundaryLayer = L.featureGroup(layers).addTo(map);
   if (layers.length) {
-    map.fitBounds(boundaryLayer.getBounds().pad(0.08), { animate: false });
+    map.fitBounds(boundaryLayer.getBounds().pad(0.03), { animate: false });
+    map.setMaxBounds(boundaryLayer.getBounds().pad(0.02));
   }
   elements.mapStatus.textContent = "市区町村をクリック（境界未取得・簡易表示）";
   updateBoundaryStyles();
   selectArea(state.selectedName);
 }
 
+function buildAreaLabelLayer() {
+  if (!window.L || !map) return;
+  labelLayer?.remove();
+  const markers = areaData
+    .filter((area) => area.lat != null && area.lng != null)
+    .map((area) => {
+      const marker = L.circleMarker([area.lat, area.lng], {
+        radius: 7,
+        color: "#ffffff",
+        weight: 1.6,
+        fillColor: colorForMetric(metricValue(area)),
+        fillOpacity: 0.85,
+        pane: "markerPane"
+      });
+      marker.feature = { type: "Feature", properties: {}, __areaData: area };
+      marker.bindTooltip(shortName(area.name), {
+        permanent: true,
+        direction: "center",
+        className: "boundary-label boundary-point-label"
+      });
+      marker.on("click", (event) => {
+        L.DomEvent.stopPropagation(event);
+        selectArea(area.name, false, true);
+      });
+      return marker;
+    });
+  labelLayer = L.featureGroup(markers).addTo(map);
+  updateBoundaryStyles();
+}
+
+function buildStationLayer() {
+  if (!window.L || !map) return;
+  stationLayer?.remove?.();
+
+  const layers = majorStations.map((station) => {
+    const showHint = station.system === "jr" ? "JR" : station.system === "hanshin" ? "阪神" : "山陽";
+    const icon = L.divIcon({
+      className: "station-div-icon",
+      html: `<div class="station-pin" data-station-name="${station.name}" data-system="${station.system}" style="--station-color:${station.color}"><span class="dot"></span><span class="label">${station.name}</span></div>`,
+      iconSize: [0, 0]
+    });
+    const marker = L.marker([station.lat, station.lng], { icon, keyboard: false });
+    marker.__station = station;
+    const lines = station.lines?.length ? station.lines.join("・") : "";
+    const html = `<strong>${station.name}</strong><span class="sub">${showHint}${lines ? `・${lines}` : ""}</span>`;
+    marker.bindTooltip(html, {
+      permanent: false,
+      direction: "top",
+      offset: [0, -8],
+      className: "station-tooltip",
+      opacity: 0.98
+    });
+    return marker;
+  });
+
+  stationLayer = L.featureGroup(layers).addTo(map);
+  updateStationVisibility();
+  updateStationLabelOffsets();
+}
+
+function updateStationVisibility() {
+  if (!map || !stationLayer) return;
+  const zoom = map.getZoom?.() ?? 0;
+  stationLayer.eachLayer((layer) => {
+    const station = layer.__station;
+    const el = layer.getElement?.();
+    if (!station || !el) return;
+    const shouldShow = zoom >= (station.minZoomShow ?? 10);
+    el.style.display = shouldShow ? "" : "none";
+    const pin = el.querySelector?.(".station-pin");
+    if (pin) {
+      pin.classList.toggle("show-label", zoom >= (station.minZoomLabel ?? 11));
+    }
+  });
+
+  updateStationLabelOffsets();
+}
+
+function updateStationLabelOffsets() {
+  if (!map || !stationLayer) return;
+  if (!labelLayer) return;
+
+  const zoom = map.getZoom?.() ?? 0;
+  // When labels are hidden, offsets don't matter.
+  if (zoom < 11) {
+    stationLayer.eachLayer((layer) => {
+      const el = layer.getElement?.();
+      if (!el) return;
+      el.style.removeProperty("--dx");
+      el.style.removeProperty("--dy");
+    });
+    return;
+  }
+
+  const areaPoints = [];
+  labelLayer.eachLayer((areaMarker) => {
+    const ll = areaMarker.getLatLng?.();
+    if (!ll) return;
+    areaPoints.push(map.latLngToContainerPoint(ll));
+  });
+  if (!areaPoints.length) return;
+
+  const maxDistance = 34; // px radius to treat as "overlap"
+  const escape = 26; // px push away
+
+  stationLayer.eachLayer((stationMarker) => {
+    const el = stationMarker.getElement?.();
+    const ll = stationMarker.getLatLng?.();
+    if (!el || !ll) return;
+
+    const p = map.latLngToContainerPoint(ll);
+    let closest = null;
+    let closestD2 = Infinity;
+
+    for (const ap of areaPoints) {
+      const dx = p.x - ap.x;
+      const dy = p.y - ap.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < closestD2) {
+        closestD2 = d2;
+        closest = { dx, dy };
+      }
+    }
+
+    if (!closest || closestD2 > maxDistance * maxDistance) {
+      el.style.removeProperty("--dx");
+      el.style.removeProperty("--dy");
+      return;
+    }
+
+    // Push the station label away from the closest municipality marker.
+    const len = Math.hypot(closest.dx, closest.dy) || 1;
+    const nx = closest.dx / len;
+    const ny = closest.dy / len;
+    const dxPx = Math.round(nx * escape);
+    const dyPx = Math.round(ny * escape);
+    el.style.setProperty("--dx", `${dxPx}px`);
+    el.style.setProperty("--dy", `${dyPx}px`);
+  });
+}
+
+function fitMapToHyogo(animate = false) {
+  if (!map || !boundaryLayer) return;
+  // Slightly tighter padding so the initial view isn't too zoomed-out.
+  map.fitBounds(boundaryLayer.getBounds().pad(0.02), { animate });
+  window.setTimeout(() => {
+    mapMinZoom = map.getZoom();
+    map.setMinZoom(mapMinZoom);
+    updateMapPanAbility();
+  }, 0);
+}
+
+function updateMapPanAbility() {
+  if (!map) return;
+  if (!lockMapPan) return;
+  const base = mapMinZoom ?? (map.getZoom?.() ?? 0);
+  const zoom = map.getZoom?.() ?? 0;
+  const canPan = zoom >= base + 0.5;
+  if (canPan) {
+    map.dragging?.enable?.();
+  } else {
+    map.dragging?.disable?.();
+  }
+}
+
+function resetMapView() {
+  if (map && boundaryLayer) {
+    map.setMinZoom(0);
+    fitMapToHyogo(true);
+  } else {
+    svgZoomController?.reset();
+  }
+}
+
 function buildSvgBoundaryLayer() {
+  isLeafletMapActive = false;
   boundaryLayer?.remove?.();
   boundaryLayer = null;
+  labelLayer?.remove?.();
+  labelLayer = null;
+  svgStationLayer = null;
   const mapElement = elements.map;
   mapElement.innerHTML = "";
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "hyogo-svg-map");
-  svg.setAttribute("viewBox", "330 40 870 820");
+  svg.setAttribute(
+    "viewBox",
+    `${svgMapView.initial.x} ${svgMapView.initial.y} ${svgMapView.initial.w} ${svgMapView.initial.h}`
+  );
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "兵庫県内の市区町村簡易地図");
 
@@ -1366,10 +2181,10 @@ function buildSvgBoundaryLayer() {
 
   const background = document.createElementNS("http://www.w3.org/2000/svg", "image");
   background.setAttribute("href", "assets/hyogo-map-bg.png");
-  background.setAttribute("x", "0");
-  background.setAttribute("y", "0");
-  background.setAttribute("width", "1600");
-  background.setAttribute("height", "900");
+  background.setAttribute("x", "-28");
+  background.setAttribute("y", "-18");
+  background.setAttribute("width", "1672");
+  background.setAttribute("height", "941");
   background.setAttribute("preserveAspectRatio", "xMidYMid meet");
   svg.appendChild(background);
 
@@ -1429,10 +2244,14 @@ function buildSvgBoundaryLayer() {
     hitArea.dataset.areaName = area.name;
     hitArea.setAttribute("cx", x);
     hitArea.setAttribute("cy", y);
-    hitArea.setAttribute("r", area.name.startsWith("神戸市") ? 28 : 32);
+    hitArea.setAttribute("r", area.name.startsWith("神戸市") ? 32 : 40);
 
     group.append(hitArea, circle, label);
-    const chooseArea = () => selectArea(area.name, false, true);
+    const chooseArea = (event) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      selectArea(area.name, false, true);
+    };
     group.addEventListener("click", chooseArea);
     hitArea.addEventListener("click", chooseArea);
     circle.addEventListener("click", chooseArea);
@@ -1447,36 +2266,47 @@ function buildSvgBoundaryLayer() {
     svg.appendChild(group);
   });
 
-  svg.addEventListener("click", (event) => {
-    const target = event.target.closest?.("[data-area-name]");
-    if (!target?.dataset?.areaName) return;
-    event.preventDefault();
-    selectArea(target.dataset.areaName, false, true);
+  const stationGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  stationGroup.setAttribute("aria-hidden", "true");
+  majorStations.forEach((station) => {
+    const { x, y } = projectLonLat(station.lng, station.lat);
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("class", "svg-station-dot");
+    dot.setAttribute("cx", x);
+    dot.setAttribute("cy", y);
+    dot.setAttribute("r", 7);
+    dot.setAttribute("fill", station.color || "#17211f");
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("class", "svg-station-label");
+    label.setAttribute("x", x + 10);
+    label.setAttribute("y", y + 5);
+    label.textContent = station.name;
+
+    stationGroup.append(dot, label);
   });
+  svg.appendChild(stationGroup);
 
   mapElement.appendChild(svg);
   svgMapLayer = svg;
+  svgStationLayer = stationGroup;
+  svgZoomController = initSvgZoom(svg);
   elements.mapStatus.textContent = "市区町村をクリック（簡易地図表示）";
   updateSvgBoundaryStyles();
   selectArea(state.selectedName);
 }
 
 function ensureMapView() {
-  if (!svgMapLayer) buildSvgBoundaryLayer();
+  if (!isLeafletMapActive && !map && !svgMapLayer) buildSvgBoundaryLayer();
 }
 
 async function loadBoundaryMap() {
-  return;
-
   if (!window.L || !map || !window.topojson) {
     buildFallbackBoundaryLayer();
     return;
   }
 
-  const urls = [
-    "data/hyogo-boundaries.topojson",
-    "https://geoshape.ex.nii.ac.jp/city/topojson/20230101/28/28_city.l.topojson"
-  ];
+  const urls = ["data/hyogo-boundaries.topojson"];
 
   for (const url of urls) {
     try {
@@ -1485,10 +2315,14 @@ async function loadBoundaryMap() {
       const topology = await response.json();
       const objectName = Object.keys(topology.objects)[0];
       const featureCollection = topojson.feature(topology, topology.objects[objectName]);
+      for (const key of Object.keys(areaGeometries)) {
+        delete areaGeometries[key];
+      }
       const hyogoFeatures = featureCollection.features
         .map((feature) => {
           const area = findAreaByFeature(feature);
           if (!area) return null;
+          areaGeometries[area.name] = feature.geometry;
           feature.__areaData = area;
           return feature;
         })
@@ -1502,20 +2336,34 @@ async function loadBoundaryMap() {
       };
 
       boundaryLayer?.remove();
+      labelLayer?.remove();
+      labelLayer = null;
       boundaryLayer = L.geoJSON(geojson, {
         style: (feature) => featureStyle(feature.__areaData),
         onEachFeature: (feature, layer) => {
-          layer.bindTooltip(shortName(feature.__areaData.name), {
-            permanent: true,
-            direction: "center",
-            className: "boundary-label"
+          layer.on("click", (event) => {
+            L.DomEvent.stopPropagation(event);
+            setSelectedFromFeature(feature, false, true);
           });
-          layer.on("click", () => setSelectedFromFeature(feature, true, true));
         }
       }).addTo(map);
+      map.setMaxBounds(boundaryLayer.getBounds().pad(0.02));
 
-      map.fitBounds(boundaryLayer.getBounds().pad(0.08), { animate: false });
-      elements.mapStatus.textContent = "市区町村をクリック";
+      map.off("click", selectFeatureFromMapClick);
+      map.on("click", selectFeatureFromMapClick);
+
+      isLeafletMapActive = true;
+      svgMapLayer = null;
+      buildAreaLabelLayer();
+      buildStationLayer();
+      map.off("zoomend", updateStationVisibility);
+      map.on("zoomend", updateStationVisibility);
+      map.off("zoomend", updateMapPanAbility);
+      map.on("zoomend", updateMapPanAbility);
+      map.off("moveend", updateStationLabelOffsets);
+      map.on("moveend", updateStationLabelOffsets);
+      fitMapToHyogo(false);
+      elements.mapStatus.textContent = "市区町村の面をクリック";
       updateBoundaryStyles();
       selectArea(state.selectedName);
       return;
@@ -1527,24 +2375,391 @@ async function loadBoundaryMap() {
   buildFallbackBoundaryLayer();
 }
 
-function initMap() {
-  buildSvgBoundaryLayer();
-  return;
+function buildOverpassQuery({ shopPatterns = [], amenityPatterns = [], namePatterns = [], brandPatterns = [] }) {
+  const [south, west, north, east] = hyogoOverpassBBox;
+  const bbox = `${south},${west},${north},${east}`;
+  const clauses = [];
+  const patternsToRegex = (patterns) => patterns.join("|");
+  if (shopPatterns.length) {
+    clauses.push(`node["shop"~"${patternsToRegex(shopPatterns)}"](${bbox});`);
+    clauses.push(`way["shop"~"${patternsToRegex(shopPatterns)}"](${bbox});`);
+    clauses.push(`relation["shop"~"${patternsToRegex(shopPatterns)}"](${bbox});`);
+  }
+  if (namePatterns.length) {
+    const regex = patternsToRegex(namePatterns);
+    if (amenityPatterns.length) {
+      clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
+      clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
+      clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
+    } else {
+      clauses.push(`node["name"~"${regex}",i](${bbox});`);
+      clauses.push(`way["name"~"${regex}",i](${bbox});`);
+      clauses.push(`relation["name"~"${regex}",i](${bbox});`);
+    }
+  }
+  if (brandPatterns.length) {
+    const regex = patternsToRegex(brandPatterns);
+    if (amenityPatterns.length) {
+      clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
+      clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
+      clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
+    } else {
+      clauses.push(`node["brand"~"${regex}",i](${bbox});`);
+      clauses.push(`way["brand"~"${regex}",i](${bbox});`);
+      clauses.push(`relation["brand"~"${regex}",i](${bbox});`);
+    }
+  }
+  return `
+[out:json][timeout:90];
+(${clauses.join("\n")});
+out center tags;
+`.trim();
+}
 
+const chainSources = [
+  {
+    key: "homeCenters",
+    query: buildOverpassQuery({
+      shopPatterns: ["doityourself", "hardware"],
+      namePatterns: homeCenterPatterns,
+      brandPatterns: homeCenterPatterns
+    }),
+    match: (tags) =>
+      tags.shop === "doityourself" ||
+      tags.shop === "hardware" ||
+      textMatchesAny(chainText(tags), homeCenterPatterns)
+  },
+  {
+    key: "mcdonalds",
+    query: buildOverpassQuery({
+      amenityPatterns: ["fast_food", "restaurant"],
+      namePatterns: restaurantChainPatterns.mcdonalds,
+      brandPatterns: restaurantChainPatterns.mcdonalds
+    }),
+    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.mcdonalds)
+  },
+  {
+    key: "yoshinoya",
+    query: buildOverpassQuery({
+      amenityPatterns: ["fast_food", "restaurant"],
+      namePatterns: restaurantChainPatterns.yoshinoya,
+      brandPatterns: restaurantChainPatterns.yoshinoya
+    }),
+    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.yoshinoya)
+  },
+  {
+    key: "sukiya",
+    query: buildOverpassQuery({
+      amenityPatterns: ["fast_food", "restaurant"],
+      namePatterns: restaurantChainPatterns.sukiya,
+      brandPatterns: restaurantChainPatterns.sukiya
+    }),
+    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.sukiya)
+  },
+  {
+    key: "matsuya",
+    query: buildOverpassQuery({
+      amenityPatterns: ["fast_food", "restaurant"],
+      namePatterns: restaurantChainPatterns.matsuya,
+      brandPatterns: restaurantChainPatterns.matsuya
+    }),
+    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.matsuya)
+  },
+  {
+    key: "saizeriya",
+    query: buildOverpassQuery({
+      amenityPatterns: ["fast_food", "restaurant"],
+      namePatterns: restaurantChainPatterns.saizeriya,
+      brandPatterns: restaurantChainPatterns.saizeriya
+    }),
+    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.saizeriya)
+  }
+];
+
+const medicalSources = [
+  {
+    key: "hospitals",
+    query: buildOverpassQuery({
+      amenityPatterns: ["hospital"]
+    }),
+    match: (tags) => tags.amenity === "hospital"
+  },
+  {
+    key: "clinics",
+    query: buildOverpassQuery({
+      amenityPatterns: ["clinic"]
+    }),
+    match: (tags) => tags.amenity === "clinic"
+  }
+];
+
+async function fetchOverpassCounts(query) {
+  const response = await fetch(chainQueryEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body: new URLSearchParams({ data: query })
+  });
+  if (!response.ok) {
+    throw new Error(`Overpass request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+const chainCacheKey = "hyogoChainCountsCacheV1";
+const chainCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
+
+function readChainCache() {
+  try {
+    return JSON.parse(localStorage.getItem(chainCacheKey) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeChainCache(payload) {
+  try {
+    localStorage.setItem(chainCacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function countChainsByArea(payloads) {
+  const countsByArea = {};
+  for (const area of areaData) {
+    countsByArea[area.name] = {
+      homeCenters: 0,
+      mcdonalds: 0,
+      yoshinoya: 0,
+      sukiya: 0,
+      matsuya: 0,
+      saizeriya: 0,
+      cheapChainTotal: 0
+    };
+  }
+
+  for (const { source, elements } of payloads) {
+    const seen = new Set();
+    for (const element of elements) {
+      const key = `${element.type}/${element.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const tags = osmtags(element);
+      if (!source.match(tags)) continue;
+      const point = osmPointForElement(element);
+      if (!point) continue;
+
+      for (const area of areaData) {
+        const geometry = areaGeometries[area.name];
+        if (!geometry || !pointInGeometry(point, geometry)) continue;
+        countsByArea[area.name][source.key] += 1;
+        if (source.key !== "homeCenters") {
+          countsByArea[area.name].cheapChainTotal += 1;
+        }
+        break;
+      }
+    }
+  }
+
+  return countsByArea;
+}
+
+function applyChainCounts(countsByArea) {
+  for (const area of areaData) {
+    const counts = countsByArea[area.name];
+    if (!counts) continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.homeCenters = counts.homeCenters;
+    stats.mcdonalds = counts.mcdonalds;
+    stats.yoshinoya = counts.yoshinoya;
+    stats.sukiya = counts.sukiya;
+    stats.matsuya = counts.matsuya;
+    stats.saizeriya = counts.saizeriya;
+    stats.cheapChainTotal = counts.cheapChainTotal;
+  }
+}
+
+function countMedicalByArea(payloads) {
+  const countsByArea = {};
+  for (const area of areaData) {
+    countsByArea[area.name] = {
+      hospitals: 0,
+      clinics: 0,
+      medicalTotal: 0
+    };
+  }
+
+  for (const { source, elements } of payloads) {
+    const seen = new Set();
+    for (const element of elements) {
+      const key = `${element.type}/${element.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const tags = osmtags(element);
+      if (!source.match(tags)) continue;
+      const point = osmPointForElement(element);
+      if (!point) continue;
+
+      for (const area of areaData) {
+        const geometry = areaGeometries[area.name];
+        if (!geometry || !pointInGeometry(point, geometry)) continue;
+        countsByArea[area.name][source.key] += 1;
+        countsByArea[area.name].medicalTotal += 1;
+        break;
+      }
+    }
+  }
+
+  return countsByArea;
+}
+
+function applyMedicalCounts(countsByArea) {
+  for (const area of areaData) {
+    const counts = countsByArea[area.name];
+    if (!counts) continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.hospitals = counts.hospitals;
+    stats.clinics = counts.clinics;
+    stats.medicalTotal = counts.medicalTotal;
+  }
+}
+
+async function loadChainCounts() {
+  if (chainStatsLoading || chainStatsLoaded) return;
+  if (!Object.keys(areaGeometries).length) return;
+  chainStatsLoading = true;
+  try {
+    const cached = readChainCache();
+    if (cached && typeof cached.savedAt === "number" && cached.countsByArea && Date.now() - cached.savedAt < chainCacheTtlMs) {
+      applyChainCounts(cached.countsByArea);
+      chainStatsLoaded = true;
+      selectArea(state.selectedName);
+      return;
+    }
+
+    const payloads = await Promise.allSettled(
+      chainSources.map(async (source) => {
+        const payload = await fetchOverpassCounts(source.query);
+        return { source, elements: payload.elements || [] };
+      })
+    );
+    const resolvedPayloads = payloads
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (!resolvedPayloads.length) {
+      throw new Error("No overpass payloads resolved");
+    }
+    const countsByArea = countChainsByArea(resolvedPayloads);
+    applyChainCounts(countsByArea);
+    writeChainCache({ savedAt: Date.now(), countsByArea });
+    chainStatsLoaded = true;
+    selectArea(state.selectedName);
+  } catch (error) {
+    console.warn("Chain count aggregation failed", error);
+  } finally {
+    chainStatsLoading = false;
+  }
+}
+
+const medicalCacheKey = "hyogoMedicalCountsCacheV1";
+const medicalCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
+
+function readMedicalCache() {
+  try {
+    return JSON.parse(localStorage.getItem(medicalCacheKey) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeMedicalCache(payload) {
+  try {
+    localStorage.setItem(medicalCacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+async function loadMedicalCounts() {
+  if (medicalStatsLoading || medicalStatsLoaded) return;
+  if (!Object.keys(areaGeometries).length) return;
+  medicalStatsLoading = true;
+  try {
+    const cached = readMedicalCache();
+    if (cached && typeof cached.savedAt === "number" && cached.countsByArea && Date.now() - cached.savedAt < medicalCacheTtlMs) {
+      applyMedicalCounts(cached.countsByArea);
+      medicalStatsLoaded = true;
+      selectArea(state.selectedName);
+      return;
+    }
+
+    const payloads = await Promise.allSettled(
+      medicalSources.map(async (source) => {
+        const payload = await fetchOverpassCounts(source.query);
+        return { source, elements: payload.elements || [] };
+      })
+    );
+    const resolvedPayloads = payloads
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (!resolvedPayloads.length) {
+      throw new Error("No medical overpass payloads resolved");
+    }
+    const countsByArea = countMedicalByArea(resolvedPayloads);
+    applyMedicalCounts(countsByArea);
+    writeMedicalCache({ savedAt: Date.now(), countsByArea });
+    medicalStatsLoaded = true;
+    selectArea(state.selectedName);
+  } catch (error) {
+    console.warn("Medical count aggregation failed", error);
+  } finally {
+    medicalStatsLoading = false;
+  }
+}
+
+function initMap() {
   if (!window.L) {
-    elements.map.style.background = "#dce7e3";
-    elements.mapStatus.textContent = "市区町村をクリック（簡易地図表示）";
+    buildSvgBoundaryLayer();
     return;
   }
 
   map = L.map("map", {
-    zoomControl: true,
+    zoomControl: false,
     scrollWheelZoom: true,
+    dragging: true,
+    touchZoom: true,
+    doubleClickZoom: true,
+    boxZoom: false,
+    keyboard: false,
+    zoomSnap: 0.25,
+    zoomDelta: 0.25,
+    maxBoundsViscosity: 1.0,
     preferCanvas: true,
     attributionControl: false
-  }).setView([34.85, 134.95], 9);
+  }).setView([34.85, 134.95], 9.75);
 
-  map.getContainer().style.background = "#f4efe4";
+  map.getContainer().style.background = "#eef6f4";
+  bindLeafletZoomControls();
+  updateMapPanAbility();
+}
+
+function bindLeafletZoomControls() {
+  if (!elements.zoomReset) return;
+  L.DomEvent.disableClickPropagation(elements.zoomReset);
+  L.DomEvent.disableScrollPropagation(elements.zoomReset);
+  elements.zoomReset.addEventListener("pointerdown", (event) => event.stopPropagation());
+  elements.zoomReset.addEventListener("touchstart", (event) => event.stopPropagation(), { passive: true });
+  elements.zoomReset.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    resetMapView();
+  });
 }
 
 function bindEvents() {
@@ -1558,8 +2773,6 @@ function bindEvents() {
       elements.tabs.forEach((item) => item.classList.remove("active"));
       tab.classList.add("active");
       state.metric = tab.dataset.metric;
-      state.descending = state.metric !== "rentValue";
-      updateSortLabel();
       render();
     });
   });
@@ -1578,15 +2791,10 @@ function bindEvents() {
     render();
   });
 
-  elements.sortToggle.addEventListener("click", () => {
-    state.descending = !state.descending;
-    updateSortLabel();
-    render();
-  });
-
-  elements.commuteFilter.addEventListener("change", (event) => {
-    state.commuteOnly = event.target.checked;
-    render();
+  elements.popularList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-area-name]");
+    if (!button) return;
+    selectArea(button.dataset.areaName, true, true);
   });
 
   elements.commentForm.addEventListener("submit", (event) => {
@@ -1604,29 +2812,19 @@ function bindEvents() {
   elements.resetView.addEventListener("click", () => {
     state.query = "";
     state.maxRent = 7.0;
-    state.commuteOnly = false;
     state.metric = "rentValue";
     state.bedroom = "oneLdk";
-    state.descending = false;
     elements.search.value = "";
     elements.rentRange.value = state.maxRent;
-    elements.commuteFilter.checked = false;
     elements.tabs.forEach((item) => item.classList.toggle("active", item.dataset.metric === state.metric));
     elements.bedroomTabs.forEach((item) => item.classList.toggle("active", item.dataset.bedroom === state.bedroom));
-    updateSortLabel();
     render();
     if (map && boundaryLayer) {
-      try {
-        map.fitBounds(boundaryLayer.getBounds().pad(0.08), { animate: true });
-      } catch (e) {
-        map.setView([34.85, 134.95], 9);
-      }
+      resetMapView();
+    } else {
+      svgZoomController?.reset();
     }
   });
-}
-
-function updateSortLabel() {
-  elements.sortToggle.querySelector("span").textContent = state.descending ? "高い順" : "安い順";
 }
 
 function render() {
@@ -1637,17 +2835,187 @@ function render() {
   if (!areas.some((area) => area.name === state.selectedName)) {
     state.selectedName = areas[0]?.name || areaData[0].name;
   }
-  renderList(areas);
   renderLegend();
+  renderMetricColorHelp();
+  renderRailLegend();
+  renderPopularRanking();
   selectArea(state.selectedName);
 }
 
 initMap();
 bindEvents();
-updateSortLabel();
 render();
-loadBoundaryMap();
+loadBoundaryMap().then(() => {
+  loadChainCounts();
+  loadMedicalCounts();
+});
 
 if (window.lucide) {
   window.lucide.createIcons();
+}
+function initSvgZoom(svg) {
+  const initial = { ...svgMapView.initial };
+  const bounds = svgMapView;
+  let vb = { ...initial };
+  const minW = 260;
+  const maxW = initial.w;
+  const canPan = () => !lockMapPan || vb.w < maxW * 0.92;
+  let activePointerId = null;
+  let lastPoint = null;
+  let dragStart = null;
+  let hasDragged = false;
+
+  const apply = () => {
+    svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  };
+
+  const clampView = () => {
+    vb.w = Math.max(minW, Math.min(maxW, vb.w));
+    vb.h = vb.w * (initial.h / initial.w);
+    if (vb.h > initial.h) {
+      vb.h = initial.h;
+      vb.w = vb.h * (initial.w / initial.h);
+    }
+    vb.x = clamp(vb.x, bounds.minX, bounds.maxX - vb.w);
+    vb.y = clamp(vb.y, bounds.minY, bounds.maxY - vb.h);
+  };
+
+  const screenToVb = (clientX, clientY) => {
+    const rect = svg.getBoundingClientRect();
+    const px = (clientX - rect.left) / rect.width;
+    const py = (clientY - rect.top) / rect.height;
+    return { x: vb.x + vb.w * px, y: vb.y + vb.h * py };
+  };
+
+  const zoomAt = (centerVb, factor) => {
+    const cx = centerVb.x;
+    const cy = centerVb.y;
+    vb.x = cx - (cx - vb.x) * factor;
+    vb.y = cy - (cy - vb.y) * factor;
+    vb.w *= factor;
+    clampView();
+    apply();
+  };
+
+  const panByScreenDelta = (dx, dy) => {
+    const rect = svg.getBoundingClientRect();
+    vb.x -= (dx / rect.width) * vb.w;
+    vb.y -= (dy / rect.height) * vb.h;
+    clampView();
+    apply();
+  };
+
+  const center = () => ({ x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 });
+
+  const reset = () => {
+    vb = { ...initial };
+    apply();
+  };
+
+  elements.zoomReset?.addEventListener("click", reset);
+
+  svg.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const c = screenToVb(e.clientX, e.clientY);
+      const factor = e.deltaY < 0 ? 0.88 : 1.12;
+      zoomAt(c, factor);
+    },
+    { passive: false }
+  );
+
+  const pointers = new Map();
+  let pinchStart = null;
+
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  svg.addEventListener("pointerdown", (e) => {
+    svg.setPointerCapture?.(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    hasDragged = false;
+
+    if (pointers.size === 1) {
+      activePointerId = e.pointerId;
+      lastPoint = { x: e.clientX, y: e.clientY };
+      dragStart = { x: e.clientX, y: e.clientY };
+      if (canPan()) svg.classList.add("dragging");
+    }
+
+    if (pointers.size === 2) {
+      const [p1, p2] = Array.from(pointers.values());
+      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      pinchStart = {
+        vb: { ...vb },
+        d: dist(p1, p2),
+        centerVb: screenToVb(mid.x, mid.y)
+      };
+    }
+  });
+
+  svg.addEventListener(
+    "pointermove",
+    (e) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (canPan() && pointers.size === 1 && e.pointerId === activePointerId && lastPoint) {
+        const dx = e.clientX - lastPoint.x;
+        const dy = e.clientY - lastPoint.y;
+        const totalDx = e.clientX - (dragStart?.x ?? e.clientX);
+        const totalDy = e.clientY - (dragStart?.y ?? e.clientY);
+        if (hasDragged || Math.hypot(totalDx, totalDy) > 8) {
+          e.preventDefault();
+          hasDragged = true;
+          panByScreenDelta(dx, dy);
+        }
+        lastPoint = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
+      if (pointers.size !== 2 || !pinchStart) return;
+
+      e.preventDefault();
+
+      const [p1, p2] = Array.from(pointers.values());
+      const dNow = dist(p1, p2);
+      if (pinchStart.d <= 0) return;
+
+      const factor = pinchStart.d / dNow;
+
+      vb = { ...pinchStart.vb };
+      hasDragged = true;
+      zoomAt(pinchStart.centerVb, factor);
+    },
+    { passive: false }
+  );
+
+  const endPinchIfNeeded = (id) => {
+    pointers.delete(id);
+    if (id === activePointerId) {
+      activePointerId = null;
+      lastPoint = null;
+      dragStart = null;
+    }
+    if (pointers.size < 2) pinchStart = null;
+    if (!pointers.size) svg.classList.remove("dragging");
+  };
+
+  svg.addEventListener(
+    "click",
+    (e) => {
+      if (!hasDragged) return;
+      e.preventDefault();
+      e.stopPropagation();
+      hasDragged = false;
+    },
+    true
+  );
+
+  svg.addEventListener("pointerup", (e) => endPinchIfNeeded(e.pointerId));
+  svg.addEventListener("pointercancel", (e) => endPinchIfNeeded(e.pointerId));
+
+  clampView();
+  apply();
+  return { reset };
 }
