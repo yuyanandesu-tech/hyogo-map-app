@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="兵庫県の市区町村をタップして、家賃・治安・交通・商業・災害・日常買物など暮らしの参考指標を比較できる住環境マップです。"
+    />
+    <title>兵庫県 住環境マップ — HYOGO AREA LENS</title>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar compact-sidebar">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">HYOGO AREA LENS · 兵庫県</p>
+            <h1>住環境を市区町村で比べる</h1>
+          </div>
+          <button class="icon-button" id="resetView" aria-label="表示をリセット" title="表示をリセット">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </header>
+
+        <section class="data-notice" aria-label="データについて">
+          家賃・スコア・店舗数は参考推定値です。契約や転居の判断前に、公式統計・不動産情報・ハザードマップ・現地状況を確認してください。
+        </section>
+
+        <section class="control-section">
+          <label class="field-label" for="areaSearch">市区町を検索</label>
+          <div class="search-box">
+            <i data-lucide="search"></i>
+            <input id="areaSearch" type="search" placeholder="例: 明石市、阪神南、姫路" autocomplete="off" />
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <span>間取り</span>
+            <span>市町村別</span>
+          </div>
+          <div class="segmented bedroom-segmented" role="tablist" aria-label="間取り">
+            <button class="bedroom-tab" data-bedroom="studio" type="button">1K</button>
+            <button class="bedroom-tab active" data-bedroom="oneLdk" type="button">1LDK</button>
+            <button class="bedroom-tab" data-bedroom="twoLdk" type="button">2LDK</button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <label for="rentRange">上限家賃</label>
+            <span id="rentRangeValue">7.0万円以下</span>
+          </div>
+          <input class="range-control" id="rentRange" type="range" min="4.8" max="11.5" step="0.1" value="7.0" />
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <span>表示する指標</span>
+            <span id="metricUnit">想定家賃</span>
+          </div>
+          <div class="segmented" role="tablist" aria-label="表示指標">
+            <button class="metric-tab active" data-metric="rentValue" type="button">
+              <i data-lucide="home"></i><span>家賃</span>
+            </button>
+            <button class="metric-tab" data-metric="rentScore" type="button">
+              <i data-lucide="badge-percent"></i><span>余力</span>
+            </button>
+            <button class="metric-tab" data-metric="overall" type="button">
+              <i data-lucide="gauge"></i><span>総合</span>
+            </button>
+            <button class="metric-tab" data-metric="lifestyle" type="button">
+              <i data-lucide="trees"></i><span>住環境</span>
+            </button>
+            <button class="metric-tab" data-metric="safety" type="button">
+              <i data-lucide="shield-check"></i><span>治安</span>
+            </button>
+            <button class="metric-tab" data-metric="commerce" type="button">
+              <i data-lucide="shopping-bag"></i><span>商業</span>
+            </button>
+            <button class="metric-tab" data-metric="access" type="button">
+              <i data-lucide="train-front"></i><span>交通</span>
+            </button>
+            <button class="metric-tab" data-metric="disaster" type="button">
+              <i data-lucide="triangle-alert"></i><span>災害</span>
+            </button>
+            <button class="metric-tab" data-metric="dailyShopping" type="button">
+              <i data-lucide="store"></i><span>買物</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="section-title">
+            <span>条件</span>
+            <span id="resultCount"></span>
+          </div>
+          <label class="toggle-row">
+            <input type="checkbox" id="commuteFilter" />
+            <span>大阪・神戸方面の通勤を重視</span>
+          </label>
+        </section>
+
+        <section class="ranking-section">
+          <div class="section-title">
+            <span>候補エリア</span>
+            <button class="text-button" id="sortToggle" type="button">
+              <i data-lucide="arrow-down-narrow-wide"></i><span>高い順</span>
+            </button>
+          </div>
+          <div class="area-list" id="areaList"></div>
+        </section>
+
+        <section class="sidebar-detail" id="detailPanel" aria-live="polite">
+          <div class="detail-heading">
+            <div>
+              <p id="selectedRegion">阪神間</p>
+              <h2 id="selectedName">明石市</h2>
+            </div>
+            <span class="score-pill" id="selectedScore">8/10</span>
+          </div>
+          <div class="metric-grid">
+            <div><span>選択間取り</span><strong id="rentValue">6.4万円</strong></div>
+            <div><span>1K</span><strong id="rentStudioValue">4.9万円</strong></div>
+            <div><span>1LDK</span><strong id="rentOneLdkValue">6.4万円</strong></div>
+            <div><span>2LDK</span><strong id="rentTwoLdkValue">7.7万円</strong></div>
+            <div><span>治安</span><strong id="safetyValue">8/10</strong></div>
+            <div><span>交通</span><strong id="accessValue">8/10</strong></div>
+            <div><span>商業</span><strong id="commerceValue">8/10</strong></div>
+            <div><span>通勤</span><strong id="commuteValue">7/10</strong></div>
+            <div><span>住環境バランス</span><strong id="lifestyleValue">8/10</strong></div>
+            <div><span>災害危険度</span><strong id="disasterValue">6/10</strong></div>
+            <div><span>スーパー</span><strong id="supermarketValue">8/10</strong></div>
+            <div><span>コンビニ</span><strong id="convenienceValue">8/10</strong></div>
+            <div><span>物価の安さ</span><strong id="priceValue">7/10</strong></div>
+            <div><span>安いスーパー</span><strong id="discountStoreValue">有</strong></div>
+            <div><span>ドラッグストア</span><strong id="drugstoreValue">8/10</strong></div>
+            <div><span>ユニクロ</span><strong id="uniqloValue">要確認</strong></div>
+            <div><span>GU</span><strong id="guValue">要確認</strong></div>
+            <div><span>家電量販店</span><strong id="electronicsValue">要確認</strong></div>
+            <div><span>居酒屋</span><strong id="izakayaValue">推定 --件</strong></div>
+            <div><span>飲食店</span><strong id="restaurantValue">推定 --件</strong></div>
+          </div>
+          <p id="selectedSummary"></p>
+          <div class="insight-list">
+            <div>
+              <span>家賃感</span>
+              <p id="rentInsight"></p>
+            </div>
+            <div>
+              <span>治安</span>
+              <p id="safetyInsight"></p>
+            </div>
+            <div>
+              <span>住環境バランス</span>
+              <p id="lifestyleInsight"></p>
+            </div>
+            <div>
+              <span>交通・商業</span>
+              <p id="accessInsight"></p>
+            </div>
+            <div>
+              <span>災害</span>
+              <p id="disasterInsight"></p>
+            </div>
+            <div>
+              <span>買物</span>
+              <p id="shoppingInsight"></p>
+            </div>
+            <div>
+              <span>大型店・外食</span>
+              <p id="retailInsight"></p>
+            </div>
+          </div>
+          <div class="info-block">
+            <span>主要路線</span>
+            <div class="chip-row" id="routeRow"></div>
+          </div>
+          <div class="info-block">
+            <span>おすすめ駅</span>
+            <div class="station-list" id="stationList"></div>
+          </div>
+          <div class="info-block">
+            <span>激安スーパー</span>
+            <div class="store-grid" id="storeGrid"></div>
+          </div>
+          <div class="info-block">
+            <span>大型店・外食</span>
+            <div class="store-grid retail-grid" id="retailGrid"></div>
+          </div>
+          <div class="info-block comment-block">
+            <span>ユーザーコメント</span>
+            <form class="comment-form" id="commentForm">
+              <textarea id="commentInput" rows="3" maxlength="240" placeholder="住んだ感想、駅周辺の雰囲気、買い物のしやすさなど"></textarea>
+              <button class="text-button comment-submit" type="submit">
+                <i data-lucide="message-square-plus"></i><span>追加</span>
+              </button>
+            </form>
+            <div class="comment-list" id="commentList"></div>
+          </div>
+          <div class="tag-row" id="tagRow"></div>
+        </section>
+
+        <footer class="note">
+          本マップの家賃・治安・交通・商業・災害・店舗・飲食店数は参考推定値です。ユーザーコメントはこのブラウザ内に保存され、運営者や他ユーザーとは共有されません。
+        </footer>
+      </aside>
+
+      <main class="map-stage">
+        <div id="map"></div>
+        <div class="map-status" id="mapStatus">市区町村をクリック</div>
+        <div class="legend" id="legend"></div>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="data/areas.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
