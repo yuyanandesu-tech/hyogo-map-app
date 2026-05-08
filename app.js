@@ -639,9 +639,6 @@ const elements = {
   search: document.querySelector("#areaSearch"),
   pinchHint: document.querySelector("#pinchHint"),
   pinchHintClose: document.querySelector("#pinchHintClose"),
-  routeMapOpen: document.querySelector("#routeMapOpen"),
-  routeMapModal: document.querySelector("#routeMapModal"),
-  routeMapClose: document.querySelector("#routeMapClose"),
   tabs: document.querySelectorAll(".metric-tab"),
   metricUnit: document.querySelector("#metricUnit"),
   resetView: document.querySelector("#resetView"),
@@ -707,6 +704,7 @@ let boundaryLayer;
 let labelLayer;
 let svgMapLayer;
 let stationLayer;
+let railLineLayer;
 let svgStationLayer;
 let isLeafletMapActive = false;
 let mapMinZoom = null;
@@ -803,34 +801,6 @@ function initPinchHint() {
 
   // Auto-dismiss after a short time.
   window.setTimeout(dismiss, 8000);
-}
-
-function initRouteMapModal() {
-  if (!elements.routeMapOpen || !elements.routeMapModal || !elements.routeMapClose) return;
-
-  const open = () => {
-    elements.routeMapModal.hidden = false;
-    document.body.classList.add("modal-open");
-  };
-  const close = () => {
-    elements.routeMapModal.hidden = true;
-    document.body.classList.remove("modal-open");
-  };
-
-  elements.routeMapOpen.addEventListener("click", (event) => {
-    event.preventDefault();
-    open();
-  });
-  elements.routeMapClose.addEventListener("click", (event) => {
-    event.preventDefault();
-    close();
-  });
-  elements.routeMapModal.addEventListener("click", (event) => {
-    if (event.target === elements.routeMapModal) close();
-  });
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !elements.routeMapModal.hidden) close();
-  });
 }
 
 const stationSystems = {
@@ -1005,6 +975,21 @@ const hankyuTakarazukaStations = [
 }));
 
 const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations, ...hankyuKobeStations, ...hankyuTakarazukaStations];
+
+const railLines = [
+  {
+    system: "hankyu",
+    label: "阪急神戸線",
+    minZoomShow: stationSystems.hankyu.minZoomShow,
+    points: hankyuKobeStations.map((s) => [s.lat, s.lng])
+  },
+  {
+    system: "hankyu",
+    label: "阪急宝塚線",
+    minZoomShow: stationSystems.hankyu.minZoomShow,
+    points: hankyuTakarazukaStations.map((s) => [s.lat, s.lng])
+  }
+];
 
 function roundRent(value) {
   return Math.round(value * 10) / 10;
@@ -2192,6 +2177,43 @@ function buildStationLayer() {
   updateStationLabelOffsets();
 }
 
+function buildRailLineLayer() {
+  if (!window.L || !map) return;
+  railLineLayer?.remove?.();
+
+  const layers = railLines.map((line) => {
+    const color = stationSystems[line.system]?.color || "#17211f";
+    const polyline = L.polyline(line.points, {
+      color,
+      weight: 4,
+      opacity: 0.78,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: false
+    });
+    polyline.__line = line;
+    return polyline;
+  });
+
+  railLineLayer = L.featureGroup(layers).addTo(map);
+  updateRailLineVisibility();
+}
+
+function updateRailLineVisibility() {
+  if (!map || !railLineLayer) return;
+  const zoom = map.getZoom?.() ?? 0;
+  railLineLayer.eachLayer((layer) => {
+    const line = layer.__line;
+    if (!line) return;
+    const shouldShow = zoom >= (line.minZoomShow ?? 11);
+    if (shouldShow) {
+      layer.addTo(map);
+    } else {
+      layer.remove?.();
+    }
+  });
+}
+
 function updateStationVisibility() {
   if (!map || !stationLayer) return;
   const zoom = map.getZoom?.() ?? 0;
@@ -2507,9 +2529,12 @@ async function loadBoundaryMap() {
       isLeafletMapActive = true;
       svgMapLayer = null;
       buildAreaLabelLayer();
+      buildRailLineLayer();
       buildStationLayer();
       map.off("zoomend", updateStationVisibility);
       map.on("zoomend", updateStationVisibility);
+      map.off("zoomend", updateRailLineVisibility);
+      map.on("zoomend", updateRailLineVisibility);
       map.off("zoomend", updateMapPanAbility);
       map.on("zoomend", updateMapPanAbility);
       map.off("moveend", updateStationLabelOffsets);
@@ -2917,7 +2942,6 @@ function bindLeafletZoomControls() {
 function bindEvents() {
   initSearchCollapse();
   initPinchHint();
-  initRouteMapModal();
 
   const resolveAreaFromQuery = (raw) => {
     const q = (raw || "").trim();
