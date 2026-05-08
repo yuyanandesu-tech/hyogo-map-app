@@ -225,6 +225,24 @@ h1 {
   line-height: 1.55;
 }
 
+.note-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-top: 10px;
+}
+
+.note-links a {
+  color: rgba(49, 64, 60, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 900;
+}
+
+.note-links a:hover {
+  color: var(--ink);
+}
+
 .map-stage {
   position: relative;
   min-width: 0;
