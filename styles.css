@@ -233,6 +233,10 @@ h1 {
   background: #eef6f4;
 }
 
+.map-canvas {
+  position: relative;
+}
+
 .map-search {
   position: relative;
   z-index: 20;
@@ -378,8 +382,8 @@ h1 {
 
 .map-status {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  top: 16px;
+  right: 16px;
   z-index: 500;
   padding: 9px 11px;
   color: var(--muted);
