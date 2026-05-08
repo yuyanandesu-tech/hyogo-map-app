@@ -152,9 +152,12 @@
       </aside>
 
       <main class="map-stage">
-        <section class="map-search">
+        <section class="map-search" id="mapSearch" aria-label="市区町の検索">
+          <button class="icon-button search-toggle" id="searchToggle" type="button" aria-label="市区町を検索" title="市区町を検索">
+            <i data-lucide="search"></i>
+          </button>
           <label class="field-label" for="areaSearch">市区町を検索</label>
-          <div class="search-box">
+          <div class="search-box" id="searchBox">
             <i data-lucide="search"></i>
             <input id="areaSearch" type="search" placeholder="例: 明石市、阪神南、姫路" autocomplete="off" />
           </div>

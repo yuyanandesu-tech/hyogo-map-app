@@ -634,6 +634,8 @@ const state = {
 
 const elements = {
   map: document.querySelector("#map"),
+  mapSearch: document.querySelector("#mapSearch"),
+  searchToggle: document.querySelector("#searchToggle"),
   search: document.querySelector("#areaSearch"),
   tabs: document.querySelectorAll(".metric-tab"),
   metricUnit: document.querySelector("#metricUnit"),
@@ -704,6 +706,7 @@ let svgStationLayer;
 let isLeafletMapActive = false;
 let mapMinZoom = null;
 const commentStorageKey = "hyogoAreaComments";
+const searchCollapsedStorageKey = "hyogoAreaSearchCollapsed";
 const svgMapView = {
   minX: 360,
   minY: 35,
@@ -714,6 +717,50 @@ const svgMapView = {
 };
 let svgZoomController = null;
 const lockMapPan = true;
+
+function setSearchCollapsed(collapsed) {
+  document.body.classList.toggle("search-collapsed", collapsed);
+  elements.searchToggle?.setAttribute("aria-expanded", String(!collapsed));
+  try {
+    localStorage.setItem(searchCollapsedStorageKey, collapsed ? "1" : "0");
+  } catch {}
+}
+
+function initSearchCollapse() {
+  if (!elements.mapSearch || !elements.searchToggle || !elements.search) return;
+
+  let collapsed = false;
+  try {
+    const saved = localStorage.getItem(searchCollapsedStorageKey);
+    if (saved === "1") collapsed = true;
+    if (saved === "0") collapsed = false;
+    if (saved == null) collapsed = window.innerWidth < 720;
+  } catch {
+    collapsed = window.innerWidth < 720;
+  }
+  setSearchCollapsed(collapsed);
+
+  elements.searchToggle.addEventListener("click", () => {
+    const nextCollapsed = !document.body.classList.contains("search-collapsed");
+    setSearchCollapsed(nextCollapsed);
+    if (!nextCollapsed) {
+      elements.search.focus();
+      elements.search.select?.();
+    }
+  });
+
+  elements.search.addEventListener("focus", () => {
+    if (document.body.classList.contains("search-collapsed")) {
+      setSearchCollapsed(false);
+    }
+  });
+
+  elements.search.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    elements.search.blur();
+    setSearchCollapsed(true);
+  });
+}
 
 const stationSystems = {
   jr: { label: "JR", color: "#1a5fd6", minZoomShow: 10, minZoomLabel: 11 },
@@ -2763,9 +2810,37 @@ function bindLeafletZoomControls() {
 }
 
 function bindEvents() {
+  initSearchCollapse();
+
+  const resolveAreaFromQuery = (raw) => {
+    const q = (raw || "").trim();
+    if (!q) return null;
+    const norm = q.replace(/\s+/g, "");
+    const list = filteredAreas();
+    const exact = list.find((a) => a.name.replace(/\s+/g, "") === norm);
+    if (exact) return exact;
+    const prefix = list.find((a) => a.name.replace(/\s+/g, "").startsWith(norm));
+    if (prefix) return prefix;
+    const contains = list.find((a) => a.name.replace(/\s+/g, "").includes(norm));
+    return contains || null;
+  };
+
   elements.search.addEventListener("input", (event) => {
     state.query = event.target.value;
     render();
+  });
+
+  elements.search.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const picked = resolveAreaFromQuery(elements.search.value);
+    if (!picked) return;
+    state.query = "";
+    elements.search.value = "";
+    render();
+    // Move map + jump to detail panel so "検索→情報一覧" が成立する
+    selectArea(picked.name, true, true);
+    setSearchCollapsed(true);
   });
 
   elements.tabs.forEach((tab) => {
