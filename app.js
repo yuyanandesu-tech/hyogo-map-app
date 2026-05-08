@@ -559,7 +559,7 @@ const metricMeta = {
   cheapChains: { label: "安価チェーン密度", unit: "10段階評価" },
   residentTax: { label: "住民税負担", unit: "10段階評価" },
   childcare: { label: "子育て支援", unit: "10段階評価" },
-  hospitals: { label: "病院（推定）", unit: "10段階評価" },
+  hospitals: { label: "病院", unit: "10段階評価" },
   landPrice: { label: "土地価格", unit: "10段階評価" },
   condoPrice: { label: "マンション価格", unit: "10段階評価" },
   overall: { label: "総合", unit: "10段階評価" },
@@ -1413,7 +1413,8 @@ function childcareSupportRating(area) {
 
 function hospitalEstimate(area) {
   const medical = area.stats || {};
-  if (medical.medicalTotal != null) return medical.medicalTotal;
+  // "病院の数" としては clinic を含めない（OSM の clinic は数が多く、指標が不自然に膨らむ）。
+  if (medical.hospitals != null) return medical.hospitals;
   const pop = area.stats?.population;
   if (pop == null) return null;
   // fallback only when OSM counts are missing
@@ -2085,9 +2086,10 @@ function selectArea(name, moveMap = false, scrollDetail = false) {
   if (elements.condoPriceValue) elements.condoPriceValue.textContent = condoPriceDisplay(area);
   if (elements.hospitalValue) {
     const stats = area.stats || {};
-    if (stats.medicalTotal != null) {
-      const suffix = stats.clinics != null && stats.hospitals != null ? `（病院${stats.hospitals}・診療所${stats.clinics}）` : "";
-      elements.hospitalValue.textContent = `${stats.medicalTotal}件${suffix}`;
+    if (stats.hospitals != null || stats.clinics != null) {
+      const hospitals = stats.hospitals ?? 0;
+      const clinics = stats.clinics ?? 0;
+      elements.hospitalValue.textContent = `病院${hospitals}件（診療所${clinics}）`;
     } else {
       const count = hospitalEstimate(area);
       elements.hospitalValue.textContent = count == null ? "推定 --件" : `推定 ${count}件`;
