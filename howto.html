@@ -27,6 +27,10 @@
           使い方ページです。地図の操作方法・検索・指標の見方・注意点をまとめています。
         </section>
 
+        <p style="margin:12px 0 0;">
+          <a href="#mapEmbed" class="text-button" style="display:inline-flex;justify-content:center;">地図を見る</a>
+        </p>
+
         <section class="sidebar-detail" aria-live="polite" style="margin-top:14px;">
           <div class="detail-heading">
             <div>
@@ -84,7 +88,9 @@
       </aside>
 
       <main class="map-stage" aria-label="マップ表示">
-        <iframe class="howto-map-embed" src="./" title="HYOGO AREA LENS マップ" loading="lazy"></iframe>
+        <div id="mapEmbed" style="scroll-margin-top:12px;">
+          <iframe class="howto-map-embed" src="./" title="HYOGO AREA LENS マップ" loading="lazy"></iframe>
+        </div>
       </main>
     </div>
   </body>
