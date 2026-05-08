@@ -2747,10 +2747,8 @@ const chainSources = [
       namePatterns: homeCenterPatterns,
       brandPatterns: homeCenterPatterns
     }),
-    match: (tags) =>
-      tags.shop === "doityourself" ||
-      tags.shop === "hardware" ||
-      textMatchesAny(chainText(tags), homeCenterPatterns)
+    // DIY店全般を数えるのではなく、チェーン名一致のみをホームセンターとして数える
+    match: (tags) => textMatchesAny(chainText(tags), homeCenterPatterns)
   },
   {
     key: "mcdonalds",
