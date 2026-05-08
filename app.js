@@ -639,6 +639,9 @@ const elements = {
   search: document.querySelector("#areaSearch"),
   pinchHint: document.querySelector("#pinchHint"),
   pinchHintClose: document.querySelector("#pinchHintClose"),
+  routeMapOpen: document.querySelector("#routeMapOpen"),
+  routeMapModal: document.querySelector("#routeMapModal"),
+  routeMapClose: document.querySelector("#routeMapClose"),
   tabs: document.querySelectorAll(".metric-tab"),
   metricUnit: document.querySelector("#metricUnit"),
   resetView: document.querySelector("#resetView"),
@@ -800,6 +803,34 @@ function initPinchHint() {
 
   // Auto-dismiss after a short time.
   window.setTimeout(dismiss, 8000);
+}
+
+function initRouteMapModal() {
+  if (!elements.routeMapOpen || !elements.routeMapModal || !elements.routeMapClose) return;
+
+  const open = () => {
+    elements.routeMapModal.hidden = false;
+    document.body.classList.add("modal-open");
+  };
+  const close = () => {
+    elements.routeMapModal.hidden = true;
+    document.body.classList.remove("modal-open");
+  };
+
+  elements.routeMapOpen.addEventListener("click", (event) => {
+    event.preventDefault();
+    open();
+  });
+  elements.routeMapClose.addEventListener("click", (event) => {
+    event.preventDefault();
+    close();
+  });
+  elements.routeMapModal.addEventListener("click", (event) => {
+    if (event.target === elements.routeMapModal) close();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.routeMapModal.hidden) close();
+  });
 }
 
 const stationSystems = {
@@ -2886,6 +2917,7 @@ function bindLeafletZoomControls() {
 function bindEvents() {
   initSearchCollapse();
   initPinchHint();
+  initRouteMapModal();
 
   const resolveAreaFromQuery = (raw) => {
     const q = (raw || "").trim();

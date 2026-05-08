@@ -233,7 +233,27 @@
             <button class="map-reset-button" type="button" id="zoomReset" aria-label="地図を初期位置に戻す" title="地図を初期位置に戻す">
               <i data-lucide="rotate-ccw"></i><span>初期位置</span>
             </button>
+            <button class="map-reset-button map-routemap-button" type="button" id="routeMapOpen" aria-label="路線図を開く" title="路線図を開く">
+              <i data-lucide="map"></i><span>路線図</span>
+            </button>
             <div class="map-status" id="mapStatus">市区町村をクリック</div>
+          </div>
+          <div class="routemap-modal" id="routeMapModal" hidden aria-label="兵庫県 路線図">
+            <div class="routemap-sheet" role="dialog" aria-modal="true" aria-label="兵庫県 路線図">
+              <div class="routemap-header">
+                <strong>兵庫県 路線図</strong>
+                <button class="icon-button routemap-close" id="routeMapClose" type="button" aria-label="路線図を閉じる">×</button>
+              </div>
+              <div class="routemap-body">
+                <img
+                  class="routemap-image"
+                  alt="兵庫県 路線図（参考）"
+                  src="https://47rail.jp/wp/wp-content/uploads/2023/02/472823A_hyogo-02-1200x848.jpg"
+                  loading="lazy"
+                />
+                <p class="routemap-note">2本指で拡大・縮小できます（画像は参考）。</p>
+              </div>
+            </div>
           </div>
           <div class="pinch-hint" id="pinchHint" role="note" aria-live="polite" hidden>
             <div class="pinch-hint-body">
