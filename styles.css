@@ -1022,6 +1022,17 @@ h2 {
   stroke-width: 2.2;
 }
 
+.bedroom-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bedroom-row-controls .rail-legend {
+  margin-left: 2px;
+}
+
 .hyogo-svg-map {
   display: block;
   width: 100%;

@@ -169,10 +169,13 @@
               <span>市町村別</span>
             </div>
             <p class="map-controls-help">間取りを変えると、家賃や総合スコアが切り替わります。</p>
-            <div class="segmented bedroom-segmented" role="tablist" aria-label="間取り">
-              <button class="bedroom-tab" data-bedroom="studio" type="button">1K</button>
-              <button class="bedroom-tab active" data-bedroom="oneLdk" type="button">1LDK</button>
-              <button class="bedroom-tab" data-bedroom="twoLdk" type="button">2LDK</button>
+            <div class="bedroom-row-controls" aria-label="間取りと鉄道カラー">
+              <div class="segmented bedroom-segmented" role="tablist" aria-label="間取り">
+                <button class="bedroom-tab" data-bedroom="studio" type="button">1K</button>
+                <button class="bedroom-tab active" data-bedroom="oneLdk" type="button">1LDK</button>
+                <button class="bedroom-tab" data-bedroom="twoLdk" type="button">2LDK</button>
+              </div>
+              <div class="rail-legend" id="railLegend" aria-label="鉄道路線の色分け凡例"></div>
             </div>
           </div>
           <div class="map-controls-row">
@@ -226,7 +229,6 @@
               </button>
             </div>
           </div>
-          <div class="rail-legend" id="railLegend" aria-label="鉄道路線の色分け凡例"></div>
         </section>
         <div class="map-canvas" aria-label="地図">
           <div id="map"></div>
