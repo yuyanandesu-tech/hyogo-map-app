@@ -1374,8 +1374,7 @@ const homeCenterPatterns = [
   "ムサシ",
   "アヤハディオ",
   "ジュンテンドー",
-  "ロイヤルホームセンター",
-  "ホームセンター"
+  "ロイヤルホームセンター"
 ];
 
 const restaurantChainPatterns = {
@@ -1388,9 +1387,8 @@ const restaurantChainPatterns = {
 
 function classifyChain(tags = {}) {
   const text = chainText(tags);
-  if (tags.shop === "doityourself" || tags.shop === "hardware" || textMatchesAny(text, homeCenterPatterns)) {
-    return "homeCenters";
-  }
+  // ホームセンターは「チェーン名に一致」したものだけ数える（一般店まで拾って過大になるのを防ぐ）
+  if (textMatchesAny(text, homeCenterPatterns)) return "homeCenters";
   if (textMatchesAny(text, restaurantChainPatterns.mcdonalds)) return "mcdonalds";
   if (textMatchesAny(text, restaurantChainPatterns.yoshinoya)) return "yoshinoya";
   if (textMatchesAny(text, restaurantChainPatterns.sukiya)) return "sukiya";
@@ -2871,7 +2869,7 @@ async function fetchOverpassCounts(query) {
   return response.json();
 }
 
-const chainCacheKey = "hyogoChainCountsCacheV1";
+const chainCacheKey = "hyogoChainCountsCacheV2";
 const chainCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 function readChainCache() {
