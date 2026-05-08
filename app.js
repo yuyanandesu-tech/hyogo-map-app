@@ -704,7 +704,6 @@ let boundaryLayer;
 let labelLayer;
 let svgMapLayer;
 let stationLayer;
-let railLineLayer;
 let svgStationLayer;
 let isLeafletMapActive = false;
 let mapMinZoom = null;
@@ -974,21 +973,32 @@ const hankyuTakarazukaStations = [
   ...stationSystems.hankyu
 }));
 
-const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations, ...hankyuKobeStations, ...hankyuTakarazukaStations];
+// 阪急今津線（兵庫県内の主要駅）
+const hankyuImazuStations = [
+  { name: "今津", lat: 34.7311652, lng: 135.3512656 },
+  { name: "阪神国道", lat: 34.737186, lng: 135.354641 },
+  { name: "西宮北口", lat: 34.745921, lng: 135.356663 },
+  { name: "門戸厄神", lat: 34.757911, lng: 135.358216 },
+  { name: "甲東園", lat: 34.767085, lng: 135.359788 },
+  { name: "仁川", lat: 34.775242, lng: 135.356979 },
+  { name: "小林", lat: 34.789005, lng: 135.352629 },
+  { name: "逆瀬川", lat: 34.797684, lng: 135.350435 },
+  { name: "宝塚南口", lat: 34.804189, lng: 135.345915 },
+  { name: "宝塚", lat: 34.81058, lng: 135.340777 }
+].map((s) => ({
+  ...s,
+  system: "hankyu",
+  lines: ["阪急今津線"],
+  ...stationSystems.hankyu
+}));
 
-const railLines = [
-  {
-    system: "hankyu",
-    label: "阪急神戸線",
-    minZoomShow: stationSystems.hankyu.minZoomShow,
-    points: hankyuKobeStations.map((s) => [s.lat, s.lng])
-  },
-  {
-    system: "hankyu",
-    label: "阪急宝塚線",
-    minZoomShow: stationSystems.hankyu.minZoomShow,
-    points: hankyuTakarazukaStations.map((s) => [s.lat, s.lng])
-  }
+const majorStations = [
+  ...jrKobeStations,
+  ...hanshinMainStations,
+  ...sanyoMainStations,
+  ...hankyuKobeStations,
+  ...hankyuTakarazukaStations,
+  ...hankyuImazuStations
 ];
 
 function roundRent(value) {
@@ -2177,43 +2187,6 @@ function buildStationLayer() {
   updateStationLabelOffsets();
 }
 
-function buildRailLineLayer() {
-  if (!window.L || !map) return;
-  railLineLayer?.remove?.();
-
-  const layers = railLines.map((line) => {
-    const color = stationSystems[line.system]?.color || "#17211f";
-    const polyline = L.polyline(line.points, {
-      color,
-      weight: 4,
-      opacity: 0.78,
-      lineCap: "round",
-      lineJoin: "round",
-      interactive: false
-    });
-    polyline.__line = line;
-    return polyline;
-  });
-
-  railLineLayer = L.featureGroup(layers).addTo(map);
-  updateRailLineVisibility();
-}
-
-function updateRailLineVisibility() {
-  if (!map || !railLineLayer) return;
-  const zoom = map.getZoom?.() ?? 0;
-  railLineLayer.eachLayer((layer) => {
-    const line = layer.__line;
-    if (!line) return;
-    const shouldShow = zoom >= (line.minZoomShow ?? 11);
-    if (shouldShow) {
-      layer.addTo(map);
-    } else {
-      layer.remove?.();
-    }
-  });
-}
-
 function updateStationVisibility() {
   if (!map || !stationLayer) return;
   const zoom = map.getZoom?.() ?? 0;
@@ -2529,12 +2502,9 @@ async function loadBoundaryMap() {
       isLeafletMapActive = true;
       svgMapLayer = null;
       buildAreaLabelLayer();
-      buildRailLineLayer();
       buildStationLayer();
       map.off("zoomend", updateStationVisibility);
       map.on("zoomend", updateStationVisibility);
-      map.off("zoomend", updateRailLineVisibility);
-      map.on("zoomend", updateRailLineVisibility);
       map.off("zoomend", updateMapPanAbility);
       map.on("zoomend", updateMapPanAbility);
       map.off("moveend", updateStationLabelOffsets);
