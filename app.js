@@ -957,7 +957,23 @@ const hankyuKobeStations = [
   ...stationSystems.hankyu
 }));
 
-const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations, ...hankyuKobeStations];
+// 阪急宝塚本線（兵庫県内の主要駅）
+const hankyuTakarazukaStations = [
+  { name: "川西能勢口", lat: 34.82764, lng: 135.413398 },
+  { name: "雲雀丘花屋敷", lat: 34.827207, lng: 135.402413 },
+  { name: "山本", lat: 34.821927, lng: 135.38847 },
+  { name: "中山観音", lat: 34.819518, lng: 135.369235 },
+  { name: "売布神社", lat: 34.815827, lng: 135.361297 },
+  { name: "清荒神", lat: 34.811391, lng: 135.35329 },
+  { name: "宝塚", lat: 34.81058, lng: 135.340777 }
+].map((s) => ({
+  ...s,
+  system: "hankyu",
+  lines: ["阪急宝塚線"],
+  ...stationSystems.hankyu
+}));
+
+const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations, ...hankyuKobeStations, ...hankyuTakarazukaStations];
 
 function roundRent(value) {
   return Math.round(value * 10) / 10;
