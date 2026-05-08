@@ -3242,6 +3242,55 @@ function bindEvents() {
     return contains || null;
   };
 
+  const normalizeStationQuery = (raw) =>
+    (raw || "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/[()（）［］【】「」『』・]/g, "")
+      .replace(/駅$/, "");
+
+  const resolveStationFromQuery = (raw) => {
+    const norm = normalizeStationQuery(raw);
+    if (!norm) return null;
+    const list = majorStations || [];
+    const getNormName = (s) => normalizeStationQuery(s?.name || "");
+    const exact = list.find((s) => getNormName(s) === norm);
+    if (exact) return exact;
+    const prefix = list.find((s) => getNormName(s).startsWith(norm));
+    if (prefix) return prefix;
+    const contains = list.find((s) => getNormName(s).includes(norm));
+    return contains || null;
+  };
+
+  const findAreaNameForPoint = (lat, lng) => {
+    const point = [lng, lat];
+    for (const area of areaData) {
+      const geometry = areaGeometries[area.name];
+      if (!geometry) continue;
+      if (pointInGeometry(point, geometry)) return area.name;
+    }
+    return null;
+  };
+
+  const flyToStation = (station) => {
+    if (!station) return;
+    if (!window.L || !map) return;
+    const targetZoom = Math.max(map.getZoom?.() ?? 0, station.minZoomLabel ?? 12, 13);
+    map.flyTo([station.lat, station.lng], targetZoom, { animate: true, duration: 0.9 });
+
+    // Open tooltip if marker exists (may be jittered); match by station identity.
+    try {
+      stationLayer?.eachLayer?.((layer) => {
+        if (layer?.__station?.name !== station.name) return;
+        layer.openTooltip?.();
+      });
+    } catch {}
+
+    // Optionally select the municipality to keep detail panel consistent.
+    const areaName = findAreaNameForPoint(station.lat, station.lng);
+    if (areaName) selectArea(areaName, false, false);
+  };
+
   elements.search.addEventListener("input", (event) => {
     state.query = event.target.value;
     render();
@@ -3251,7 +3300,16 @@ function bindEvents() {
     if (event.key !== "Enter") return;
     event.preventDefault();
     const picked = resolveAreaFromQuery(elements.search.value);
-    if (!picked) return;
+    if (!picked) {
+      const station = resolveStationFromQuery(elements.search.value);
+      if (!station) return;
+      state.query = "";
+      elements.search.value = "";
+      render();
+      flyToStation(station);
+      setSearchCollapsed(true);
+      return;
+    }
     state.query = "";
     elements.search.value = "";
     render();
