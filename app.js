@@ -2979,7 +2979,7 @@ async function loadChainCounts() {
   }
 }
 
-const medicalCacheKey = "hyogoMedicalCountsCacheV1";
+const medicalCacheKey = "hyogoMedicalCountsCacheV2";
 const medicalCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 function readMedicalCache() {
