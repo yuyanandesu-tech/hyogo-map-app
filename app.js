@@ -808,7 +808,8 @@ const stationSystems = {
   hanshin: { label: "阪神", color: "#f2c400", minZoomShow: 11, minZoomLabel: 12 },
   sanyo: { label: "山陽", color: "#d84b3f", minZoomShow: 11, minZoomLabel: 12 },
   subwayYamate: { label: "地下鉄(山手)", color: "#1aa85b", minZoomShow: 11, minZoomLabel: 12 },
-  subwayKaigan: { label: "地下鉄(海岸)", color: "#1d70b8", minZoomShow: 11, minZoomLabel: 12 }
+  subwayKaigan: { label: "地下鉄(海岸)", color: "#1d70b8", minZoomShow: 11, minZoomLabel: 12 },
+  portliner: { label: "ポートライナー", color: "#d1007a", minZoomShow: 11, minZoomLabel: 12 }
 };
 
 // 駅座標は「路線図（rosenzu.net）」の緯度経度一覧を元にしています。
@@ -1042,6 +1043,27 @@ const kobeSubwayKaiganStations = [
   ...stationSystems.subwayKaigan
 }));
 
+// 神戸新交通 ポートアイランド線（ポートライナー）
+const portlinerStations = [
+  { name: "三宮", lat: 34.6945454, lng: 135.1952558 },
+  { name: "貿易センター", lat: 34.6893944, lng: 135.1994556 },
+  { name: "ポートターミナル", lat: 34.6813861, lng: 135.2023028 },
+  { name: "中公園", lat: 34.67325, lng: 135.2073944 },
+  { name: "みなとじま", lat: 34.6690667, lng: 135.2099944 },
+  { name: "市民広場", lat: 34.6649, lng: 135.2124611 },
+  { name: "南公園", lat: 34.6646278, lng: 135.2169722 },
+  { name: "中埠頭", lat: 34.6694181, lng: 135.217128 },
+  { name: "北埠頭", lat: 34.6735502, lng: 135.2146618 },
+  { name: "医療センター", lat: 34.6584624, lng: 135.2164079 },
+  { name: "計算科学センター", lat: 34.6547587, lng: 135.2216126 },
+  { name: "神戸空港", lat: 34.6371944, lng: 135.2289528 }
+].map((s) => ({
+  ...s,
+  system: "portliner",
+  lines: ["ポートライナー"],
+  ...stationSystems.portliner
+}));
+
 const majorStations = [
   ...jrKobeStations,
   ...hanshinMainStations,
@@ -1050,7 +1072,8 @@ const majorStations = [
   ...hankyuTakarazukaStations,
   ...hankyuImazuStations,
   ...kobeSubwayYamateStations,
-  ...kobeSubwayKaiganStations
+  ...kobeSubwayKaiganStations,
+  ...portlinerStations
 ];
 
 function roundRent(value) {
