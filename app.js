@@ -1968,14 +1968,12 @@ function renderRailLegend() {
     return;
   }
   elements.railLegend.innerHTML = `
-    <div class="rail-legend-title">鉄道カラー</div>
     <div class="rail-legend-items">
       ${entries
         .map(
           ([key, meta]) => `
             <div class="rail-legend-item" data-system="${key}">
-              <span class="rail-legend-swatch" style="--swatch:${meta.color}"></span>
-              <span>${meta.label}</span>
+              <span class="rail-legend-swatch" style="--swatch:${meta.color}" title="${meta.label}" aria-label="${meta.label}"></span>
             </div>
           `
         )

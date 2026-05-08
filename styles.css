@@ -964,51 +964,45 @@ h2 {
 }
 
 .rail-legend {
-  position: absolute;
-  left: 24px;
-  bottom: 74px;
-  z-index: 500;
-  display: grid;
+  position: static;
+  z-index: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 6px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  transform: scale(0.6);
-  transform-origin: left bottom;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .rail-legend-title {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
+  display: none;
 }
 
 .rail-legend-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
+  display: contents;
 }
 
 .rail-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 20px;
+  gap: 0;
+  min-height: auto;
   color: var(--ink);
-  font-size: 11px;
+  font-size: 0;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .rail-legend-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
   background: var(--swatch, #1a5fd6);
-  border: 2px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 8px 18px rgba(23, 33, 31, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 14px rgba(23, 33, 31, 0.16);
 }
 
 .legend-scale {
@@ -1257,8 +1251,7 @@ h2 {
   }
 
   .rail-legend {
-    left: 12px;
-    bottom: 64px;
+    order: 50;
   }
 }
 
