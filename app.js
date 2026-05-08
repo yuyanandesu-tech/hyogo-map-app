@@ -939,7 +939,25 @@ const sanyoMainStations = [
   ...stationSystems.sanyo
 }));
 
-const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations];
+// 阪急神戸本線（兵庫県内の主要駅）
+const hankyuKobeStations = [
+  { name: "西宮北口", lat: 34.745921, lng: 135.356663 },
+  { name: "夙川", lat: 34.742162, lng: 135.328077 },
+  { name: "芦屋川", lat: 34.736396, lng: 135.300585 },
+  { name: "岡本", lat: 34.729107, lng: 135.275729 },
+  { name: "御影", lat: 34.7245682, lng: 135.2520801 },
+  { name: "六甲", lat: 34.71985, lng: 135.234388 },
+  { name: "王子公園", lat: 34.710165, lng: 135.218375 },
+  { name: "春日野道", lat: 34.703024, lng: 135.205374 },
+  { name: "神戸三宮", lat: 34.693502, lng: 135.195104 }
+].map((s) => ({
+  ...s,
+  system: "hankyu",
+  lines: ["阪急神戸線"],
+  ...stationSystems.hankyu
+}));
+
+const majorStations = [...jrKobeStations, ...hanshinMainStations, ...sanyoMainStations, ...hankyuKobeStations];
 
 function roundRent(value) {
   return Math.round(value * 10) / 10;
