@@ -883,7 +883,7 @@ const hanshinMainStations = [
   { name: "西灘", lat: 34.705982, lng: 135.224978 },
   { name: "岩屋", lat: 34.704043, lng: 135.21777 },
   { name: "春日野道", lat: 34.6995653, lng: 135.2086104 },
-  { name: "神戸三宮", lat: 34.693502, lng: 135.195104 },
+  { name: "阪神三宮", lat: 34.693502, lng: 135.195104 },
   { name: "元町", lat: 34.689569, lng: 135.187373 }
 ].map((s) => ({
   ...s,
@@ -1067,10 +1067,21 @@ const portlinerStations = [
 
 // 神戸電鉄（主要駅）
 const shintetsuStations = [
+  { name: "新開地", lat: 34.6759806, lng: 135.1692889 },
   { name: "湊川", lat: 34.6793204, lng: 135.1662149 },
+  { name: "鵯越", lat: 34.6926389, lng: 135.1421278 },
+  { name: "丸山", lat: 34.6858167, lng: 135.1439917 },
   { name: "鈴蘭台", lat: 34.7237089, lng: 135.1458242 },
+  { name: "鈴蘭台西口", lat: 34.7264125, lng: 135.1407275 },
+  { name: "藍那", lat: 34.7323973, lng: 135.1181613 },
   { name: "北鈴蘭台", lat: 34.7395073, lng: 135.1519361 },
+  { name: "箕谷", lat: 34.7569111, lng: 135.1557667 },
+  { name: "山の街", lat: 34.7462285, lng: 135.1531578 },
   { name: "谷上", lat: 34.7618306, lng: 135.1713444 },
+  { name: "花山", lat: 34.7695333, lng: 135.1868778 },
+  { name: "大池", lat: 34.7806861, lng: 135.1983861 },
+  { name: "神鉄六甲", lat: 34.7855528, lng: 135.2066389 },
+  { name: "唐櫃台", lat: 34.7903558, lng: 135.2114922 },
   { name: "有馬口", lat: 34.7967417, lng: 135.22095 },
   { name: "有馬温泉", lat: 34.7993222, lng: 135.2459694 },
   { name: "岡場", lat: 34.8217775, lng: 135.2224551 },
@@ -2260,26 +2271,73 @@ function buildStationLayer() {
   if (!window.L || !map) return;
   stationLayer?.remove?.();
 
-  const layers = majorStations.map((station) => {
-    const showHint = stationSystems[station.system]?.label || "";
-    const icon = L.divIcon({
-      className: "station-div-icon",
-      html: `<div class="station-pin" data-station-name="${station.name}" data-system="${station.system}" style="--station-color:${station.color}"><span class="dot"></span><span class="label">${station.name}</span></div>`,
-      iconSize: [0, 0]
-    });
-    const marker = L.marker([station.lat, station.lng], { icon, keyboard: false });
-    marker.__station = station;
-    const lines = station.lines?.length ? station.lines.join("・") : "";
-    const html = `<strong>${station.name}</strong><span class="sub">${showHint}${lines ? `・${lines}` : ""}</span>`;
-    marker.bindTooltip(html, {
-      permanent: false,
-      direction: "top",
-      offset: [0, -8],
-      className: "station-tooltip",
-      opacity: 0.98
-    });
-    return marker;
+  // Slightly separate markers when multiple stations share coordinates (e.g. 三宮周辺).
+  const jitterKey = (s) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)}`;
+  const groups = new Map();
+  majorStations.forEach((s) => {
+    const key = jitterKey(s);
+    const list = groups.get(key) || [];
+    list.push(s);
+    groups.set(key, list);
   });
+
+  const offsetsForCount = (count) => {
+    if (count <= 1) return [[0, 0]];
+    const res = [[0, 0]];
+    const rings = [18, 30]; // meters
+    let placed = 1;
+    for (const r of rings) {
+      const slots = Math.max(6, Math.round((2 * Math.PI * r) / 18));
+      for (let i = 0; i < slots && placed < count; i++) {
+        const a = (i / slots) * Math.PI * 2;
+        res.push([Math.cos(a) * r, Math.sin(a) * r]);
+        placed++;
+      }
+      if (placed >= count) break;
+    }
+    while (res.length < count) res.push([0, 0]);
+    return res;
+  };
+
+  const markerLatLngFor = (station, index, total) => {
+    const [dxm, dym] = offsetsForCount(total)[index] || [0, 0];
+    if (!dxm && !dym) return [station.lat, station.lng];
+    const latRad = (station.lat * Math.PI) / 180;
+    const metersPerDegLat = 111_320;
+    const metersPerDegLng = 111_320 * Math.cos(latRad);
+    const dLat = dym / metersPerDegLat;
+    const dLng = dxm / (metersPerDegLng || 1);
+    return [station.lat + dLat, station.lng + dLng];
+  };
+
+  const systemOrder = (system) =>
+    ["jr", "hanshin", "hankyu", "sanyo", "subwayYamate", "subwayKaigan", "portliner", "shintetsu"].indexOf(system);
+
+  const layers = [];
+  for (const [key, list] of groups) {
+    const sorted = [...list].sort((a, b) => (systemOrder(a.system) - systemOrder(b.system) || a.name.localeCompare(b.name)));
+    sorted.forEach((station, idx) => {
+      const showHint = stationSystems[station.system]?.label || "";
+      const icon = L.divIcon({
+        className: "station-div-icon",
+        html: `<div class="station-pin" data-station-name="${station.name}" data-system="${station.system}" style="--station-color:${station.color}"><span class="dot"></span><span class="label">${station.name}</span></div>`,
+        iconSize: [0, 0]
+      });
+      const [lat, lng] = markerLatLngFor(station, idx, sorted.length);
+      const marker = L.marker([lat, lng], { icon, keyboard: false });
+      marker.__station = station;
+      const lines = station.lines?.length ? station.lines.join("・") : "";
+      const html = `<strong>${station.name}</strong><span class="sub">${showHint}${lines ? `・${lines}` : ""}</span>`;
+      marker.bindTooltip(html, {
+        permanent: false,
+        direction: "top",
+        offset: [0, -8],
+        className: "station-tooltip",
+        opacity: 0.98
+      });
+      layers.push(marker);
+    });
+  }
 
   stationLayer = L.featureGroup(layers).addTo(map);
   updateStationVisibility();
