@@ -637,6 +637,8 @@ const elements = {
   mapSearch: document.querySelector("#mapSearch"),
   searchToggle: document.querySelector("#searchToggle"),
   search: document.querySelector("#areaSearch"),
+  pinchHint: document.querySelector("#pinchHint"),
+  pinchHintClose: document.querySelector("#pinchHintClose"),
   tabs: document.querySelectorAll(".metric-tab"),
   metricUnit: document.querySelector("#metricUnit"),
   resetView: document.querySelector("#resetView"),
@@ -707,6 +709,7 @@ let isLeafletMapActive = false;
 let mapMinZoom = null;
 const commentStorageKey = "hyogoAreaComments";
 const searchCollapsedStorageKey = "hyogoAreaSearchCollapsed";
+const pinchHintStorageKey = "hyogoAreaPinchHintDismissed";
 const svgMapView = {
   minX: 360,
   minY: 35,
@@ -760,6 +763,48 @@ function initSearchCollapse() {
     elements.search.blur();
     setSearchCollapsed(true);
   });
+}
+
+function initPinchHint() {
+  if (!elements.pinchHint) return;
+
+  const likelyTouch =
+    "ontouchstart" in window ||
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+    window.matchMedia?.("(pointer: coarse)")?.matches;
+
+  if (!likelyTouch) return;
+
+  try {
+    if (localStorage.getItem(pinchHintStorageKey) === "1") return;
+  } catch {}
+
+  elements.pinchHint.hidden = false;
+
+  const dismiss = () => {
+    if (!elements.pinchHint || elements.pinchHint.hidden) return;
+    elements.pinchHint.hidden = true;
+    try {
+      localStorage.setItem(pinchHintStorageKey, "1");
+    } catch {}
+  };
+
+  elements.pinchHintClose?.addEventListener("click", dismiss);
+
+  // Hide when user actually starts using pinch/zoom gestures.
+  const mapEl = elements.map;
+  const onTouch = (event) => {
+    if (event.touches && event.touches.length >= 2) dismiss();
+  };
+  mapEl?.addEventListener("touchstart", onTouch, { passive: true });
+
+  // Auto-dismiss after a short time.
+  window.setTimeout(dismiss, 6500);
+
+  if (map && typeof map.on === "function") {
+    map.on("zoomstart", dismiss);
+    map.on("movestart", dismiss);
+  }
 }
 
 const stationSystems = {
@@ -2811,6 +2856,7 @@ function bindLeafletZoomControls() {
 
 function bindEvents() {
   initSearchCollapse();
+  initPinchHint();
 
   const resolveAreaFromQuery = (raw) => {
     const q = (raw || "").trim();

@@ -237,6 +237,75 @@ h1 {
   position: relative;
 }
 
+.pinch-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(23, 33, 31, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(10px);
+}
+
+.pinch-hint[hidden] {
+  display: none;
+}
+
+.pinch-hint-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pinch-hint-body svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
+  flex: 0 0 18px;
+}
+
+.pinch-hint-body span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinch-hint-body b {
+  color: #ffffff;
+}
+
+.pinch-hint-close {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pinch-hint-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .map-search {
   position: relative;
   z-index: 20;
