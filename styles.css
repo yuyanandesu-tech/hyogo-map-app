@@ -381,9 +381,7 @@ h1 {
 }
 
 .map-status {
-  position: absolute;
-  top: 70px;
-  right: 12px;
+  position: static;
   z-index: 500;
   padding: 9px 11px;
   color: var(--muted);
@@ -393,6 +391,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
+  pointer-events: auto;
 }
 
 .station-marker {
