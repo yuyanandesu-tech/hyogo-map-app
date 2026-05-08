@@ -799,12 +799,7 @@ function initPinchHint() {
   mapEl?.addEventListener("touchstart", onTouch, { passive: true });
 
   // Auto-dismiss after a short time.
-  window.setTimeout(dismiss, 6500);
-
-  if (map && typeof map.on === "function") {
-    map.on("zoomstart", dismiss);
-    map.on("movestart", dismiss);
-  }
+  window.setTimeout(dismiss, 8000);
 }
 
 const stationSystems = {
