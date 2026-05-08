@@ -809,7 +809,8 @@ const stationSystems = {
   sanyo: { label: "山陽", color: "#d84b3f", minZoomShow: 11, minZoomLabel: 12 },
   subwayYamate: { label: "地下鉄(山手)", color: "#1aa85b", minZoomShow: 11, minZoomLabel: 12 },
   subwayKaigan: { label: "地下鉄(海岸)", color: "#1d70b8", minZoomShow: 11, minZoomLabel: 12 },
-  portliner: { label: "ポートライナー", color: "#d1007a", minZoomShow: 11, minZoomLabel: 12 }
+  portliner: { label: "ポートライナー", color: "#d1007a", minZoomShow: 11, minZoomLabel: 12 },
+  shintetsu: { label: "神戸電鉄", color: "#0b7a6c", minZoomShow: 11, minZoomLabel: 12 }
 };
 
 // 駅座標は「路線図（rosenzu.net）」の緯度経度一覧を元にしています。
@@ -1064,6 +1065,28 @@ const portlinerStations = [
   ...stationSystems.portliner
 }));
 
+// 神戸電鉄（主要駅）
+const shintetsuStations = [
+  { name: "湊川", lat: 34.6793204, lng: 135.1662149 },
+  { name: "鈴蘭台", lat: 34.7237089, lng: 135.1458242 },
+  { name: "北鈴蘭台", lat: 34.7395073, lng: 135.1519361 },
+  { name: "谷上", lat: 34.7618306, lng: 135.1713444 },
+  { name: "有馬口", lat: 34.7967417, lng: 135.22095 },
+  { name: "有馬温泉", lat: 34.7993222, lng: 135.2459694 },
+  { name: "岡場", lat: 34.8217775, lng: 135.2224551 },
+  { name: "三田", lat: 34.8883261, lng: 135.2302582 },
+  { name: "西鈴蘭台", lat: 34.7258354, lng: 135.1350301 },
+  { name: "押部谷", lat: 34.7566187, lng: 135.0391833 },
+  { name: "緑が丘", lat: 34.7649972, lng: 135.0258389 },
+  { name: "志染", lat: 34.7825281, lng: 135.0075584 },
+  { name: "粟生", lat: 34.857348, lng: 134.909606 }
+].map((s) => ({
+  ...s,
+  system: "shintetsu",
+  lines: ["神戸電鉄"],
+  ...stationSystems.shintetsu
+}));
+
 const majorStations = [
   ...jrKobeStations,
   ...hanshinMainStations,
@@ -1073,7 +1096,8 @@ const majorStations = [
   ...hankyuImazuStations,
   ...kobeSubwayYamateStations,
   ...kobeSubwayKaiganStations,
-  ...portlinerStations
+  ...portlinerStations,
+  ...shintetsuStations
 ];
 
 function roundRent(value) {
