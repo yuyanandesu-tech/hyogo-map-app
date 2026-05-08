@@ -806,7 +806,9 @@ const stationSystems = {
   jr: { label: "JR", color: "#1a5fd6", minZoomShow: 10, minZoomLabel: 11 },
   hankyu: { label: "阪急", color: "#6b4a2b", minZoomShow: 11, minZoomLabel: 12 },
   hanshin: { label: "阪神", color: "#f2c400", minZoomShow: 11, minZoomLabel: 12 },
-  sanyo: { label: "山陽", color: "#d84b3f", minZoomShow: 11, minZoomLabel: 12 }
+  sanyo: { label: "山陽", color: "#d84b3f", minZoomShow: 11, minZoomLabel: 12 },
+  subwayYamate: { label: "地下鉄(山手)", color: "#1aa85b", minZoomShow: 11, minZoomLabel: 12 },
+  subwayKaigan: { label: "地下鉄(海岸)", color: "#1d70b8", minZoomShow: 11, minZoomLabel: 12 }
 };
 
 // 駅座標は「路線図（rosenzu.net）」の緯度経度一覧を元にしています。
@@ -995,13 +997,60 @@ const hankyuImazuStations = [
   ...stationSystems.hankyu
 }));
 
+// 神戸市営地下鉄 西神・山手線（主要駅）
+const kobeSubwayYamateStations = [
+  { name: "谷上", lat: 34.7618306, lng: 135.1713444 },
+  { name: "新神戸", lat: 34.7052758, lng: 135.195735 },
+  { name: "三宮", lat: 34.6938024, lng: 135.1921541 },
+  { name: "県庁前", lat: 34.6909139, lng: 135.1838583 },
+  { name: "大倉山", lat: 34.6846139, lng: 135.174525 },
+  { name: "湊川公園", lat: 34.6793611, lng: 135.1672167 },
+  { name: "上沢", lat: 34.67325, lng: 135.1583306 },
+  { name: "長田", lat: 34.6684917, lng: 135.1515083 },
+  { name: "新長田", lat: 34.6578204, lng: 135.1450445 },
+  { name: "板宿", lat: 34.6598074, lng: 135.1347073 },
+  { name: "妙法寺", lat: 34.6750444, lng: 135.1101194 },
+  { name: "名谷", lat: 34.6793278, lng: 135.0942111 },
+  { name: "総合運動公園", lat: 34.6817028, lng: 135.0757833 },
+  { name: "学園都市", lat: 34.6815116, lng: 135.0575028 },
+  { name: "伊川谷", lat: 34.6878861, lng: 135.0413639 },
+  { name: "西神南", lat: 34.699405, lng: 135.03018306 },
+  { name: "西神中央", lat: 34.7194694, lng: 135.0174472 }
+].map((s) => ({
+  ...s,
+  system: "subwayYamate",
+  lines: ["地下鉄西神・山手線"],
+  ...stationSystems.subwayYamate
+}));
+
+// 神戸市営地下鉄 海岸線
+const kobeSubwayKaiganStations = [
+  { name: "新長田", lat: 34.6578204, lng: 135.1450445 },
+  { name: "駒ヶ林", lat: 34.6521056, lng: 135.1495528 },
+  { name: "苅藻", lat: 34.65365, lng: 135.1565972 },
+  { name: "御崎公園", lat: 34.6547472, lng: 135.1654518 },
+  { name: "和田岬", lat: 34.6568778, lng: 135.1746861 },
+  { name: "中央市場前", lat: 34.6661972, lng: 135.1758639 },
+  { name: "ハーバーランド", lat: 34.6785361, lng: 135.1787111 },
+  { name: "みなと元町", lat: 34.6856171, lng: 135.1836241 },
+  { name: "旧居留地・大丸前", lat: 34.689575, lng: 135.190675 },
+  { name: "三宮・花時計前", lat: 34.6916277, lng: 135.1955709 }
+].map((s) => ({
+  ...s,
+  system: "subwayKaigan",
+  lines: ["地下鉄海岸線"],
+  ...stationSystems.subwayKaigan
+}));
+
 const majorStations = [
   ...jrKobeStations,
   ...hanshinMainStations,
   ...sanyoMainStations,
   ...hankyuKobeStations,
   ...hankyuTakarazukaStations,
-  ...hankyuImazuStations
+  ...hankyuImazuStations,
+  ...kobeSubwayYamateStations,
+  ...kobeSubwayKaiganStations
 ];
 
 function roundRent(value) {
@@ -2165,7 +2214,7 @@ function buildStationLayer() {
   stationLayer?.remove?.();
 
   const layers = majorStations.map((station) => {
-    const showHint = station.system === "jr" ? "JR" : station.system === "hanshin" ? "阪神" : "山陽";
+    const showHint = stationSystems[station.system]?.label || "";
     const icon = L.divIcon({
       className: "station-div-icon",
       html: `<div class="station-pin" data-station-name="${station.name}" data-system="${station.system}" style="--station-color:${station.color}"><span class="dot"></span><span class="label">${station.name}</span></div>`,
