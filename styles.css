@@ -31,6 +31,18 @@ body {
   background: var(--soft);
 }
 
+.embed-mode .app-shell {
+  grid-template-columns: 1fr;
+}
+
+.embed-mode .sidebar {
+  display: none;
+}
+
+.embed-mode .map-stage {
+  min-height: 100vh;
+}
+
 button,
 input {
   font: inherit;

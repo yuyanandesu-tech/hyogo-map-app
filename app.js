@@ -10,6 +10,14 @@ const kobeWards = [
   ["神戸市西区", 0.82, 80, 62, 62, ["神戸市", "住宅地", "大学"]]
 ];
 
+// Embed mode: hide sidebar when used inside other pages (e.g. howto.html iframe).
+try {
+  const params = new URLSearchParams(window.location.search || "");
+  if (params.get("embed") === "1") {
+    document.documentElement.classList.add("embed-mode");
+  }
+} catch {}
+
 /** Approximate ward centers — used when TopoJSON is unavailable (fallback disks). */
 const kobeCentroids = {
   神戸市東灘区: [34.717, 135.272],
