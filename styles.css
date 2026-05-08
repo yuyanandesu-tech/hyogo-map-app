@@ -977,32 +977,43 @@ h2 {
   box-shadow: none;
 }
 
+.rail-legend-row {
+  margin-top: 6px;
+}
+
 .rail-legend-title {
   display: none;
 }
 
 .rail-legend-items {
-  display: contents;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .rail-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 6px;
   min-height: auto;
   color: var(--ink);
-  font-size: 0;
+  font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(23, 33, 31, 0.12);
+  box-shadow: 0 8px 18px rgba(23, 33, 31, 0.08);
 }
 
 .rail-legend-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 4px;
   background: var(--swatch, #1a5fd6);
   border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 6px 14px rgba(23, 33, 31, 0.16);
+  box-shadow: 0 6px 14px rgba(23, 33, 31, 0.12);
 }
 
 .legend-scale {
@@ -1020,17 +1031,6 @@ h2 {
   width: 18px;
   height: 18px;
   stroke-width: 2.2;
-}
-
-.bedroom-row-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.bedroom-row-controls .rail-legend {
-  margin-left: 2px;
 }
 
 .hyogo-svg-map {

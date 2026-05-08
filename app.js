@@ -1973,7 +1973,8 @@ function renderRailLegend() {
         .map(
           ([key, meta]) => `
             <div class="rail-legend-item" data-system="${key}">
-              <span class="rail-legend-swatch" style="--swatch:${meta.color}" title="${meta.label}" aria-label="${meta.label}"></span>
+              <span class="rail-legend-swatch" style="--swatch:${meta.color}" aria-hidden="true"></span>
+              <span class="rail-legend-label">${meta.label}</span>
             </div>
           `
         )
