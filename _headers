@@ -14,3 +14,6 @@
 
 /*.css
   Cache-Control: public, max-age=3600
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
