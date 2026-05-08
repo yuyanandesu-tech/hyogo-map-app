@@ -941,6 +941,9 @@ const sanyoMainStations = [
 
 // 阪急神戸本線（兵庫県内の主要駅）
 const hankyuKobeStations = [
+  { name: "武庫之荘", lat: 34.751621, lng: 135.393118 },
+  { name: "塚口", lat: 34.750974, lng: 135.424923 },
+  { name: "園田", lat: 34.752002, lng: 135.448205 },
   { name: "西宮北口", lat: 34.745921, lng: 135.356663 },
   { name: "夙川", lat: 34.742162, lng: 135.328077 },
   { name: "芦屋川", lat: 34.736396, lng: 135.300585 },
