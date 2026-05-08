@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hyogo-area-lens.net/sitemap.xml
+
