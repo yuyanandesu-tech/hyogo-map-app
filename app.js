@@ -94,8 +94,13 @@ const chainStatKeys = [
   "medicalTotal"
 ];
 
+const discountStoreKeys = ["sandy", "trial", "lopia"];
+
 for (const stats of Object.values(areaStats)) {
   for (const key of chainStatKeys) {
+    stats[key] = null;
+  }
+  for (const key of discountStoreKeys) {
     stats[key] = null;
   }
 }
@@ -107,6 +112,8 @@ let chainStatsLoading = false;
 let chainStatsLoaded = false;
 let medicalStatsLoading = false;
 let medicalStatsLoaded = false;
+let discountStoreLoading = false;
+let discountStoreLoaded = false;
 
 const condoPriceByArea = window.HYOGO_CONDO_PRICES || {};
 
@@ -1548,19 +1555,25 @@ function renderStoreGrid(area) {
     ["maruhachi", "マルハチ"],
     ["marui", "マルアイ"],
     ["lamu", "ラ・ムー"],
-    ["gyomu", "業務スーパー"]
+    ["gyomu", "業務スーパー"],
+    ["sandy", "サンディ"],
+    ["trial", "トライアル"],
+    ["lopia", "ロピア"]
   ];
   elements.storeGrid.innerHTML = order
     .map(([key, label]) => {
-      const stateLabel = storeStateText(stores[key]);
+      const count = area.stats?.[key];
+      const fromOsm = typeof count === "number";
+      const stateLabel = fromOsm ? (count > 0 ? `あり(${count})` : "なし") : storeStateText(stores[key]);
+      const stateColor = fromOsm ? (count > 0 ? "あり" : "なし") : storeStateText(stores[key]);
       const note =
-        stateLabel === "あり"
+        stateColor === "あり"
           ? "店舗候補あり"
-          : stateLabel === "なし"
+          : stateColor === "なし"
             ? "店舗なし"
             : "近隣を要確認";
       return `
-        <div class="store-pill" data-state="${stateLabel}">
+        <div class="store-pill" data-state="${stateColor}">
           <strong>${label}</strong>
           <span>${stateLabel}</span>
           <small>${note}</small>
@@ -2805,6 +2818,45 @@ const medicalSources = [
   }
 ];
 
+const discountSupermarketPatterns = {
+  sandy: ["サンディ", "SANDY"],
+  trial: ["トライアル", "TRIAL"],
+  lopia: ["ロピア", "LOPIA"]
+};
+
+const discountStoreSources = [
+  {
+    key: "sandy",
+    query: buildOverpassQuery({
+      namePatterns: discountSupermarketPatterns.sandy,
+      brandPatterns: discountSupermarketPatterns.sandy
+    }),
+    match: (tags) =>
+      ["supermarket", "hypermarket", "discount"].includes(tags.shop) &&
+      textMatchesAny([tags.name, tags.brand, tags.operator].filter(Boolean).join(" "), discountSupermarketPatterns.sandy)
+  },
+  {
+    key: "trial",
+    query: buildOverpassQuery({
+      namePatterns: discountSupermarketPatterns.trial,
+      brandPatterns: discountSupermarketPatterns.trial
+    }),
+    match: (tags) =>
+      ["supermarket", "hypermarket", "discount"].includes(tags.shop) &&
+      textMatchesAny([tags.name, tags.brand, tags.operator].filter(Boolean).join(" "), discountSupermarketPatterns.trial)
+  },
+  {
+    key: "lopia",
+    query: buildOverpassQuery({
+      namePatterns: discountSupermarketPatterns.lopia,
+      brandPatterns: discountSupermarketPatterns.lopia
+    }),
+    match: (tags) =>
+      ["supermarket", "hypermarket", "discount"].includes(tags.shop) &&
+      textMatchesAny([tags.name, tags.brand, tags.operator].filter(Boolean).join(" "), discountSupermarketPatterns.lopia)
+  }
+];
+
 async function fetchOverpassCounts(query) {
   const response = await fetch(chainQueryEndpoint, {
     method: "POST",
@@ -2982,6 +3034,9 @@ async function loadChainCounts() {
 const medicalCacheKey = "hyogoMedicalCountsCacheV2";
 const medicalCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
+const discountStoreCacheKey = "hyogoDiscountStoreCountsCacheV1";
+const discountStoreCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
+
 function readMedicalCache() {
   try {
     return JSON.parse(localStorage.getItem(medicalCacheKey) || "null");
@@ -2995,6 +3050,106 @@ function writeMedicalCache(payload) {
     localStorage.setItem(medicalCacheKey, JSON.stringify(payload));
   } catch {
     // ignore quota errors
+  }
+}
+
+function readDiscountStoreCache() {
+  try {
+    return JSON.parse(localStorage.getItem(discountStoreCacheKey) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeDiscountStoreCache(payload) {
+  try {
+    localStorage.setItem(discountStoreCacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function countDiscountStoresByArea(payloads) {
+  const countsByArea = {};
+  for (const area of areaData) {
+    countsByArea[area.name] = { sandy: 0, trial: 0, lopia: 0 };
+  }
+
+  for (const { source, elements } of payloads) {
+    const seen = new Set();
+    for (const element of elements) {
+      const key = `${element.type}/${element.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const tags = osmtags(element);
+      if (!source.match(tags)) continue;
+      const point = osmPointForElement(element);
+      if (!point) continue;
+
+      for (const area of areaData) {
+        const geometry = areaGeometries[area.name];
+        if (!geometry || !pointInGeometry(point, geometry)) continue;
+        countsByArea[area.name][source.key] += 1;
+        break;
+      }
+    }
+  }
+
+  return countsByArea;
+}
+
+function applyDiscountStoreCounts(countsByArea) {
+  for (const area of areaData) {
+    const counts = countsByArea[area.name];
+    if (!counts) continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.sandy = counts.sandy;
+    stats.trial = counts.trial;
+    stats.lopia = counts.lopia;
+  }
+}
+
+async function loadDiscountStoreCounts() {
+  if (discountStoreLoading || discountStoreLoaded) return;
+  if (!Object.keys(areaGeometries).length) return;
+  discountStoreLoading = true;
+  try {
+    const cached = readDiscountStoreCache();
+    if (
+      cached &&
+      typeof cached.savedAt === "number" &&
+      cached.countsByArea &&
+      Date.now() - cached.savedAt < discountStoreCacheTtlMs
+    ) {
+      applyDiscountStoreCounts(cached.countsByArea);
+      discountStoreLoaded = true;
+      selectArea(state.selectedName);
+      return;
+    }
+
+    const payloads = await Promise.allSettled(
+      discountStoreSources.map(async (source) => {
+        const payload = await fetchOverpassCounts(source.query);
+        return { source, elements: payload.elements || [] };
+      })
+    );
+    const resolvedPayloads = payloads
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (!resolvedPayloads.length) {
+      throw new Error("No discount-store overpass payloads resolved");
+    }
+    const countsByArea = countDiscountStoresByArea(resolvedPayloads);
+    applyDiscountStoreCounts(countsByArea);
+    writeDiscountStoreCache({ savedAt: Date.now(), countsByArea });
+    discountStoreLoaded = true;
+    selectArea(state.selectedName);
+  } catch (error) {
+    console.warn("Discount store aggregation failed", error);
+  } finally {
+    discountStoreLoading = false;
   }
 }
 
@@ -3189,6 +3344,7 @@ render();
 loadBoundaryMap().then(() => {
   loadChainCounts();
   loadMedicalCounts();
+  loadDiscountStoreCounts();
 });
 
 if (window.lucide) {
