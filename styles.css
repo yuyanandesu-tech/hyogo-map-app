@@ -243,6 +243,19 @@ h1 {
   color: var(--ink);
 }
 
+.howto-map-embed {
+  width: 100%;
+  height: 100vh;
+  border: 0;
+  background: #eef6f4;
+}
+
+@media (max-width: 900px) {
+  .howto-map-embed {
+    height: min(70vh, 640px);
+  }
+}
+
 .map-stage {
   position: relative;
   min-width: 0;

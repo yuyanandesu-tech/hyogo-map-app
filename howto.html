@@ -27,22 +27,10 @@
           使い方ページです。地図の操作方法・検索・指標の見方・注意点をまとめています。
         </section>
 
-        <footer class="note">
-          <div class="note-links" aria-label="サイト情報">
-            <a href="./">マップ</a>
-            <a href="howto.html">使い方</a>
-            <a href="privacy.html">プライバシーポリシー</a>
-            <a href="contact.html">お問い合わせ</a>
-            <a href="about.html">運営者情報</a>
-          </div>
-        </footer>
-      </aside>
-
-      <main class="map-stage" style="background:#f5fbf9;">
-        <section class="sidebar-detail" style="max-width:920px;margin:24px auto;border-radius:12px;">
+        <section class="sidebar-detail" aria-live="polite" style="margin-top:14px;">
           <div class="detail-heading">
             <div>
-              <p class="eyebrow">HYOGO AREA LENS</p>
+              <p class="eyebrow">ガイド</p>
               <h2>使い方</h2>
             </div>
           </div>
@@ -82,11 +70,21 @@
             <li>一部の店舗数・病院数はOSM等のデータを集計しているため、漏れや重複があり得ます。</li>
             <li>災害・治安などは町丁目や物件位置で変わります。ハザードマップ等の確認が推奨です。</li>
           </ul>
-
-          <p style="margin-top:20px;">
-            <a href="./" class="text-button" style="display:inline-flex;justify-content:center;">マップへ戻る</a>
-          </p>
         </section>
+
+        <footer class="note">
+          <div class="note-links" aria-label="サイト情報">
+            <a href="./">マップ</a>
+            <a href="howto.html">使い方</a>
+            <a href="privacy.html">プライバシーポリシー</a>
+            <a href="contact.html">お問い合わせ</a>
+            <a href="about.html">運営者情報</a>
+          </div>
+        </footer>
+      </aside>
+
+      <main class="map-stage" aria-label="マップ表示">
+        <iframe class="howto-map-embed" src="./" title="HYOGO AREA LENS マップ" loading="lazy"></iframe>
       </main>
     </div>
   </body>
