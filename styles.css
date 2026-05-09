@@ -887,6 +887,16 @@ h2 {
   font-size: 12px;
 }
 
+.retail-grid .retail-count-pill strong {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.retail-grid .retail-count-pill span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .store-pill[data-state="あり"] {
   background: #e7f3f1;
 }

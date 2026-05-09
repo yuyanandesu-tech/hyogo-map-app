@@ -1315,9 +1315,11 @@ function retailProfile(area) {
 }
 
 function countDisplay(count) {
-  if (count >= 1000) return `推定${Math.round(count / 100) * 100}件`;
-  if (count >= 100) return `推定${Math.round(count / 10) * 10}件`;
-  return `推定${count}件`;
+  const n = Number(count);
+  if (count == null || Number.isNaN(n)) return "推定 ―";
+  if (n >= 1000) return `推定${Math.round(n / 100) * 100}件`;
+  if (n >= 100) return `推定${Math.round(n / 10) * 10}件`;
+  return `推定${n}件`;
 }
 
 function actualCountDisplay(count) {
@@ -1701,24 +1703,42 @@ function renderStoreGrid(area) {
 
 function renderRetailGrid(area) {
   const retail = retailProfile(area);
-  const items = [
-    ["ユニクロ", retail.uniqlo, retail.uniqlo === "あり" ? "店舗候補あり" : retail.uniqlo === "少なめ" ? "近隣市も確認" : "駅前・SCを確認"],
-    ["GU", retail.gu, retail.gu === "あり" ? "店舗候補あり" : retail.gu === "少なめ" ? "近隣市も確認" : "駅前・SCを確認"],
-    ["家電量販店", retail.electronics, retail.electronics === "あり" ? "店舗候補あり" : retail.electronics === "少なめ" ? "近隣市も確認" : "大型商業を確認"],
-    ["居酒屋", countDisplay(retail.izakaya), "推定件数"],
-    ["飲食店", countDisplay(retail.restaurants), "推定件数"]
-  ];
-  elements.retailGrid.innerHTML = items
-    .map(
-      ([label, stateLabel, note]) => `
-        <div class="store-pill" data-state="${stateLabel}">
-          <strong>${label}</strong>
-          <span>${stateLabel}</span>
+  /** 件数はチェーン欄と同様、数字を強調（OSM非依存の推定）。 */
+  const pill = (label, middle, note, layout = "status") => {
+    if (layout === "count") {
+      return `
+        <div class="store-pill retail-count-pill" data-state="count">
+          <strong>${middle}</strong>
+          <span>${label}</span>
           <small>${note}</small>
-        </div>
-      `
-    )
-    .join("");
+        </div>`;
+    }
+    return `
+        <div class="store-pill" data-state="${middle}">
+          <strong>${label}</strong>
+          <span>${middle}</span>
+          <small>${note}</small>
+        </div>`;
+  };
+  elements.retailGrid.innerHTML = [
+    pill(
+      "ユニクロ",
+      retail.uniqlo,
+      retail.uniqlo === "あり" ? "店舗候補あり" : retail.uniqlo === "少なめ" ? "近隣市も確認" : "駅前・SCを確認"
+    ),
+    pill(
+      "GU",
+      retail.gu,
+      retail.gu === "あり" ? "店舗候補あり" : retail.gu === "少なめ" ? "近隣市も確認" : "駅前・SCを確認"
+    ),
+    pill(
+      "家電量販店",
+      retail.electronics,
+      retail.electronics === "あり" ? "店舗候補あり" : retail.electronics === "少なめ" ? "近隣市も確認" : "大型商業を確認"
+    ),
+    pill("居酒屋", countDisplay(retail.izakaya), "推定件数", "count"),
+    pill("飲食店", countDisplay(retail.restaurants), "推定件数", "count")
+  ].join("");
 }
 
 function renderChainGrid(area) {
@@ -3104,6 +3124,23 @@ function countChainsByArea(payloads) {
   return countsByArea;
 }
 
+/** OSM 取得失敗時にすべて 0 として後続の公式オーバーライドだけ効かせる。 */
+function emptyChainCountsByArea() {
+  const countsByArea = {};
+  for (const area of areaData) {
+    countsByArea[area.name] = {
+      homeCenters: 0,
+      mcdonalds: 0,
+      yoshinoya: 0,
+      sukiya: 0,
+      matsuya: 0,
+      saizeriya: 0,
+      cheapChainTotal: 0
+    };
+  }
+  return countsByArea;
+}
+
 function applyChainCounts(countsByArea) {
   for (const area of areaData) {
     const counts = countsByArea[area.name];
@@ -3317,6 +3354,17 @@ async function loadChainCounts() {
     selectArea(state.selectedName);
   } catch (error) {
     console.warn("Chain count aggregation failed", error);
+    try {
+      applyChainCounts(emptyChainCountsByArea());
+      applyOfficialMatsuHyogoStats();
+      applyOfficialMcDonaldsHyogoStats();
+      applyOfficialSaizeriyaHyogoStats();
+      applyOfficialHomeCentersHyogoStats();
+      chainStatsLoaded = true;
+      selectArea(state.selectedName);
+    } catch (fallbackError) {
+      console.warn("Chain count fallback failed", fallbackError);
+    }
   } finally {
     chainStatsLoading = false;
   }
