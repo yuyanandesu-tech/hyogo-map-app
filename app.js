@@ -95,6 +95,9 @@ const chainStatKeys = [
   "yoshinoya",
   "sukiya",
   "matsuya",
+  "matsunoya",
+  "myCurry",
+  "matsuGroupTotal",
   "saizeriya",
   "cheapChainTotal",
   "hospitals",
@@ -1323,22 +1326,30 @@ function actualFacilityDisplay(count) {
 
 function cheapChainSummary(area) {
   const stats = area.stats || {};
+  if (stats.mcdonalds == null || stats.yoshinoya == null || stats.sukiya == null || stats.saizeriya == null) {
+    return "安価チェーンは集計中です（読み込み後に反映されます）。";
+  }
+  if (stats.matsuGroupTotal != null) {
+    return `神戸市区は松屋・松のや・マイカリーを合計${stats.matsuGroupTotal}店として表示しています（行政区単位・ブランド内訳は未反映）。他チェーンはOSM集計です。`;
+  }
+  if (stats.matsuya == null) {
+    return "安価チェーンは集計中です（読み込み後に反映されます）。";
+  }
+
   const values = [
     ["マクドナルド", stats.mcdonalds],
     ["吉野家", stats.yoshinoya],
     ["すき家", stats.sukiya],
-    ["松屋", stats.matsuya],
-    ["サイゼリヤ", stats.saizeriya]
+    ["松屋", stats.matsuya]
   ];
+  if (typeof stats.matsunoya === "number") values.push(["松のや", stats.matsunoya]);
+  if (typeof stats.myCurry === "number") values.push(["マイカリー食堂", stats.myCurry]);
+  values.push(["サイゼリヤ", stats.saizeriya]);
 
-  const anyLoading = values.some(([, count]) => count == null);
   const found = values.filter(([, count]) => typeof count === "number" && count > 0).map(([label]) => label);
   const none =
     values.every(([, count]) => typeof count === "number") && values.every(([, count]) => (count ?? 0) === 0);
 
-  if (anyLoading) {
-    return "安価チェーンは集計中です（読み込み後に反映されます）。";
-  }
   if (found.length) {
     return `この市町村で見つかった安価チェーン: ${found.join("・")}。`;
   }
@@ -1393,15 +1404,70 @@ const restaurantChainPatterns = {
   saizeriya: ["サイゼリヤ", "サイゼリア", "Saizeriya", "SAIZERIYA"]
 };
 
+/** OSM tags that represent an actual eatery (exclude offices mis-tagged as restaurants). */
+const CHAIN_RESTAURANT_AMENITIES = new Set(["fast_food", "restaurant", "food_court"]);
+const OSM_NAME_KEYS = ["name", "name:ja", "name:en"];
+const OSM_BRAND_KEYS = ["brand", "brand:ja", "brand:en"];
+
+function isOsmDisusedOrAbandoned(tags = {}) {
+  if (tags.disused === "amenity" || tags["disused:amenity"] || tags.abandoned === "amenity") return true;
+  if (tags.amenity === "disused") return true;
+  return false;
+}
+
+function isLikelyCorporateOrNonOutletOsmName(name) {
+  if (!name) return false;
+  return /ホールディングス|本社|事業本部|本店ビル|オフィス|研究所|物流|倉庫|工場|データセンター|研修センター|研修所|学院|大学|学校/i.test(
+    name
+  );
+}
+
+function outletLikeOsmName(name) {
+  if (!name) return false;
+  return /店|ドライブスルー|ドライブスル|ドライブイン|ＤＴ|DT|イートイン|テイクアウト|駅|SC|モール|アウトレット/i.test(name);
+}
+
+/**
+ * Stricter than substring on chainText(): reduces HQ / mis-tagged POIs and operator-only noise.
+ */
+function fastFoodChainMatch(tags = {}, patterns) {
+  if (!tags || isOsmDisusedOrAbandoned(tags)) return false;
+  if (!CHAIN_RESTAURANT_AMENITIES.has(tags.amenity)) return false;
+
+  const primaryLabel =
+    [tags.name, tags["name:ja"], tags.brand, tags["brand:ja"]].find((v) => typeof v === "string" && v.trim()) || "";
+
+  const brandHit = OSM_BRAND_KEYS.some((k) => tags[k] && textMatchesAny(tags[k], patterns));
+  const nameHit = OSM_NAME_KEYS.some(
+    (k) =>
+      tags[k] &&
+      textMatchesAny(tags[k], patterns) &&
+      !isLikelyCorporateOrNonOutletOsmName(tags[k])
+  );
+
+  if (brandHit) {
+    if (
+      primaryLabel &&
+      isLikelyCorporateOrNonOutletOsmName(primaryLabel) &&
+      !outletLikeOsmName(primaryLabel)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  return nameHit;
+}
+
 function classifyChain(tags = {}) {
   const text = chainText(tags);
   // ホームセンターは「チェーン名に一致」したものだけ数える（一般店まで拾って過大になるのを防ぐ）
   if (textMatchesAny(text, homeCenterPatterns)) return "homeCenters";
-  if (textMatchesAny(text, restaurantChainPatterns.mcdonalds)) return "mcdonalds";
-  if (textMatchesAny(text, restaurantChainPatterns.yoshinoya)) return "yoshinoya";
-  if (textMatchesAny(text, restaurantChainPatterns.sukiya)) return "sukiya";
-  if (textMatchesAny(text, restaurantChainPatterns.matsuya)) return "matsuya";
-  if (textMatchesAny(text, restaurantChainPatterns.saizeriya)) return "saizeriya";
+  if (fastFoodChainMatch(tags, restaurantChainPatterns.mcdonalds)) return "mcdonalds";
+  if (fastFoodChainMatch(tags, restaurantChainPatterns.yoshinoya)) return "yoshinoya";
+  if (fastFoodChainMatch(tags, restaurantChainPatterns.sukiya)) return "sukiya";
+  if (fastFoodChainMatch(tags, restaurantChainPatterns.matsuya)) return "matsuya";
+  if (fastFoodChainMatch(tags, restaurantChainPatterns.saizeriya)) return "saizeriya";
   return null;
 }
 
@@ -1613,22 +1679,34 @@ function renderRetailGrid(area) {
 
 function renderChainGrid(area) {
   const chainStats = area.stats || {};
+  const officialMatsu = window.HYOGO_OFFICIAL_MATSU?.[area.name];
+  const officialMcd = window.HYOGO_OFFICIAL_MCDONALDS?.[area.name];
+  const officialSai = window.HYOGO_OFFICIAL_SAIZERIYA?.[area.name];
+  const officialHc = window.HYOGO_OFFICIAL_HOME_CENTERS?.[area.name];
   const items = [
-    ["ホームセンター", chainStats.homeCenters],
-    ["マクドナルド", chainStats.mcdonalds],
-    ["吉野家", chainStats.yoshinoya],
-    ["すき家", chainStats.sukiya],
-    ["松屋", chainStats.matsuya],
-    ["サイゼリヤ", chainStats.saizeriya],
-    ["安価チェーン合計", chainStats.cheapChainTotal]
+    ["ホームセンター", chainStats.homeCenters, typeof officialHc === "number" ? "公式内訳" : "OSM"],
+    ["マクドナルド", chainStats.mcdonalds, typeof officialMcd === "number" ? "公式内訳" : "OSM"],
+    ["吉野家", chainStats.yoshinoya, "OSM"],
+    ["すき家", chainStats.sukiya, "OSM"]
   ];
+  if (chainStats.matsuGroupTotal != null) {
+    items.push(["松屋・松のや・マイカリー（合計）", chainStats.matsuGroupTotal, "公式内訳"]);
+  } else {
+    const matsuyaNote =
+      officialMatsu && officialMatsu.groupTotal == null && officialMatsu.matsuya != null ? "公式内訳" : "OSM";
+    items.push(["松屋", chainStats.matsuya, matsuyaNote]);
+    if (typeof chainStats.matsunoya === "number") items.push(["松のや", chainStats.matsunoya, "公式内訳"]);
+    if (typeof chainStats.myCurry === "number") items.push(["マイカリー食堂", chainStats.myCurry, "公式内訳"]);
+  }
+  items.push(["サイゼリヤ", chainStats.saizeriya, typeof officialSai === "number" ? "公式内訳" : "OSM"]);
+  items.push(["安価チェーン合計", chainStats.cheapChainTotal, "算出"]);
   elements.chainGrid.innerHTML = items
     .map(
-      ([label, count]) => `
+      ([label, count, note]) => `
         <div class="store-pill" data-state="count">
           <strong>${actualCountDisplay(count)}</strong>
           <span>${label}</span>
-          <small>${count == null ? "集計中" : "実数"}</small>
+          <small>${count == null ? "集計中" : note || "実数"}</small>
         </div>
       `
     )
@@ -2706,11 +2784,20 @@ async function loadBoundaryMap() {
   buildFallbackBoundaryLayer();
 }
 
-function buildOverpassQuery({ shopPatterns = [], amenityPatterns = [], namePatterns = [], brandPatterns = [] }) {
+function buildOverpassQuery({
+  shopPatterns = [],
+  amenityPatterns = [],
+  namePatterns = [],
+  brandPatterns = [],
+  /** Also query name:ja/name:en and brand:ja/brand:en (common JP mapping; reduces undercount vs official lists). */
+  localizedNameBrand = false
+}) {
   const [south, west, north, east] = hyogoOverpassBBox;
   const bbox = `${south},${west},${north},${east}`;
   const clauses = [];
   const patternsToRegex = (patterns) => patterns.join("|");
+  const nameTagKeys = localizedNameBrand ? ["name", "name:ja", "name:en"] : ["name"];
+  const brandTagKeys = localizedNameBrand ? ["brand", "brand:ja", "brand:en"] : ["brand"];
   if (shopPatterns.length) {
     clauses.push(`node["shop"~"${patternsToRegex(shopPatterns)}"](${bbox});`);
     clauses.push(`way["shop"~"${patternsToRegex(shopPatterns)}"](${bbox});`);
@@ -2718,30 +2805,34 @@ function buildOverpassQuery({ shopPatterns = [], amenityPatterns = [], namePatte
   }
   if (namePatterns.length) {
     const regex = patternsToRegex(namePatterns);
-    if (amenityPatterns.length) {
-      clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
-      clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
-      clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["name"~"${regex}",i](${bbox});`);
-    } else {
-      clauses.push(`node["name"~"${regex}",i](${bbox});`);
-      clauses.push(`way["name"~"${regex}",i](${bbox});`);
-      clauses.push(`relation["name"~"${regex}",i](${bbox});`);
+    for (const nk of nameTagKeys) {
+      if (amenityPatterns.length) {
+        clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["${nk}"~"${regex}",i](${bbox});`);
+        clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["${nk}"~"${regex}",i](${bbox});`);
+        clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["${nk}"~"${regex}",i](${bbox});`);
+      } else {
+        clauses.push(`node["${nk}"~"${regex}",i](${bbox});`);
+        clauses.push(`way["${nk}"~"${regex}",i](${bbox});`);
+        clauses.push(`relation["${nk}"~"${regex}",i](${bbox});`);
+      }
     }
   }
   if (brandPatterns.length) {
     const regex = patternsToRegex(brandPatterns);
-    if (amenityPatterns.length) {
-      clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
-      clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
-      clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["brand"~"${regex}",i](${bbox});`);
-    } else {
-      clauses.push(`node["brand"~"${regex}",i](${bbox});`);
-      clauses.push(`way["brand"~"${regex}",i](${bbox});`);
-      clauses.push(`relation["brand"~"${regex}",i](${bbox});`);
+    for (const bk of brandTagKeys) {
+      if (amenityPatterns.length) {
+        clauses.push(`node["amenity"~"${patternsToRegex(amenityPatterns)}"]["${bk}"~"${regex}",i](${bbox});`);
+        clauses.push(`way["amenity"~"${patternsToRegex(amenityPatterns)}"]["${bk}"~"${regex}",i](${bbox});`);
+        clauses.push(`relation["amenity"~"${patternsToRegex(amenityPatterns)}"]["${bk}"~"${regex}",i](${bbox});`);
+      } else {
+        clauses.push(`node["${bk}"~"${regex}",i](${bbox});`);
+        clauses.push(`way["${bk}"~"${regex}",i](${bbox});`);
+        clauses.push(`relation["${bk}"~"${regex}",i](${bbox});`);
+      }
     }
   }
   return `
-[out:json][timeout:90];
+[out:json][timeout:120];
 (${clauses.join("\n")});
 out center tags;
 `.trim();
@@ -2761,47 +2852,52 @@ const chainSources = [
   {
     key: "mcdonalds",
     query: buildOverpassQuery({
-      amenityPatterns: ["fast_food", "restaurant"],
+      amenityPatterns: ["fast_food", "restaurant", "food_court"],
       namePatterns: restaurantChainPatterns.mcdonalds,
-      brandPatterns: restaurantChainPatterns.mcdonalds
+      brandPatterns: restaurantChainPatterns.mcdonalds,
+      localizedNameBrand: true
     }),
-    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.mcdonalds)
+    match: (tags) => fastFoodChainMatch(tags, restaurantChainPatterns.mcdonalds)
   },
   {
     key: "yoshinoya",
     query: buildOverpassQuery({
-      amenityPatterns: ["fast_food", "restaurant"],
+      amenityPatterns: ["fast_food", "restaurant", "food_court"],
       namePatterns: restaurantChainPatterns.yoshinoya,
-      brandPatterns: restaurantChainPatterns.yoshinoya
+      brandPatterns: restaurantChainPatterns.yoshinoya,
+      localizedNameBrand: true
     }),
-    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.yoshinoya)
+    match: (tags) => fastFoodChainMatch(tags, restaurantChainPatterns.yoshinoya)
   },
   {
     key: "sukiya",
     query: buildOverpassQuery({
-      amenityPatterns: ["fast_food", "restaurant"],
+      amenityPatterns: ["fast_food", "restaurant", "food_court"],
       namePatterns: restaurantChainPatterns.sukiya,
-      brandPatterns: restaurantChainPatterns.sukiya
+      brandPatterns: restaurantChainPatterns.sukiya,
+      localizedNameBrand: true
     }),
-    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.sukiya)
+    match: (tags) => fastFoodChainMatch(tags, restaurantChainPatterns.sukiya)
   },
   {
     key: "matsuya",
     query: buildOverpassQuery({
-      amenityPatterns: ["fast_food", "restaurant"],
+      amenityPatterns: ["fast_food", "restaurant", "food_court"],
       namePatterns: restaurantChainPatterns.matsuya,
-      brandPatterns: restaurantChainPatterns.matsuya
+      brandPatterns: restaurantChainPatterns.matsuya,
+      localizedNameBrand: true
     }),
-    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.matsuya)
+    match: (tags) => fastFoodChainMatch(tags, restaurantChainPatterns.matsuya)
   },
   {
     key: "saizeriya",
     query: buildOverpassQuery({
-      amenityPatterns: ["fast_food", "restaurant"],
+      amenityPatterns: ["fast_food", "restaurant", "food_court"],
       namePatterns: restaurantChainPatterns.saizeriya,
-      brandPatterns: restaurantChainPatterns.saizeriya
+      brandPatterns: restaurantChainPatterns.saizeriya,
+      localizedNameBrand: true
     }),
-    match: (tags) => textMatchesAny(chainText(tags), restaurantChainPatterns.saizeriya)
+    match: (tags) => fastFoodChainMatch(tags, restaurantChainPatterns.saizeriya)
   }
 ];
 
@@ -2875,7 +2971,7 @@ async function fetchOverpassCounts(query) {
   return response.json();
 }
 
-const chainCacheKey = "hyogoChainCountsCacheV2";
+const chainCacheKey = "hyogoChainCountsCacheV9";
 const chainCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 function readChainCache() {
@@ -2894,26 +2990,48 @@ function writeChainCache(payload) {
   }
 }
 
+function haversineMeters(lon1, lat1, lon2, lat2) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/** Greedy clustering: counts distinct outlets when node+building centers are tens of meters apart. */
+function clusterPointCount(points, thresholdMeters) {
+  if (!points.length) return 0;
+  const reps = [];
+  for (const p of points) {
+    const dup = reps.some((r) => haversineMeters(p[0], p[1], r[0], r[1]) <= thresholdMeters);
+    if (!dup) reps.push(p);
+  }
+  return reps.length;
+}
+
 function countChainsByArea(payloads) {
-  const countsByArea = {};
+  const CLUSTER_M = 95;
+  const buckets = {};
   for (const area of areaData) {
-    countsByArea[area.name] = {
-      homeCenters: 0,
-      mcdonalds: 0,
-      yoshinoya: 0,
-      sukiya: 0,
-      matsuya: 0,
-      saizeriya: 0,
-      cheapChainTotal: 0
+    buckets[area.name] = {
+      homeCenters: [],
+      mcdonalds: [],
+      yoshinoya: [],
+      sukiya: [],
+      matsuya: [],
+      saizeriya: []
     };
   }
 
   for (const { source, elements } of payloads) {
-    const seen = new Set();
+    const seenId = new Set();
     for (const element of elements) {
-      const key = `${element.type}/${element.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const idKey = `${element.type}/${element.id}`;
+      if (seenId.has(idKey)) continue;
+      seenId.add(idKey);
 
       const tags = osmtags(element);
       if (!source.match(tags)) continue;
@@ -2923,13 +3041,30 @@ function countChainsByArea(payloads) {
       for (const area of areaData) {
         const geometry = areaGeometries[area.name];
         if (!geometry || !pointInGeometry(point, geometry)) continue;
-        countsByArea[area.name][source.key] += 1;
-        if (source.key !== "homeCenters") {
-          countsByArea[area.name].cheapChainTotal += 1;
-        }
+        buckets[area.name][source.key].push(point);
         break;
       }
     }
+  }
+
+  const countsByArea = {};
+  for (const area of areaData) {
+    const b = buckets[area.name];
+    const homeCenters = clusterPointCount(b.homeCenters, CLUSTER_M);
+    const mcdonalds = clusterPointCount(b.mcdonalds, CLUSTER_M);
+    const yoshinoya = clusterPointCount(b.yoshinoya, CLUSTER_M);
+    const sukiya = clusterPointCount(b.sukiya, CLUSTER_M);
+    const matsuya = clusterPointCount(b.matsuya, CLUSTER_M);
+    const saizeriya = clusterPointCount(b.saizeriya, CLUSTER_M);
+    countsByArea[area.name] = {
+      homeCenters,
+      mcdonalds,
+      yoshinoya,
+      sukiya,
+      matsuya,
+      saizeriya,
+      cheapChainTotal: mcdonalds + yoshinoya + sukiya + matsuya + saizeriya
+    };
   }
 
   return countsByArea;
@@ -2948,6 +3083,95 @@ function applyChainCounts(countsByArea) {
     stats.matsuya = counts.matsuya;
     stats.saizeriya = counts.saizeriya;
     stats.cheapChainTotal = counts.cheapChainTotal;
+  }
+}
+
+/** Recompute cheapChainTotal after OSM counts and/or official overrides (matsu, mcd, saizeriya). */
+function recalcCheapChainTotal(stats, areaName) {
+  const mcd = stats.mcdonalds ?? 0;
+  const yosh = stats.yoshinoya ?? 0;
+  const suki = stats.sukiya ?? 0;
+  const sai = stats.saizeriya ?? 0;
+  const matRow = window.HYOGO_OFFICIAL_MATSU?.[areaName];
+  if (matRow?.groupTotal != null) {
+    stats.cheapChainTotal = mcd + yosh + suki + sai + matRow.groupTotal;
+    return;
+  }
+  if (matRow && matRow.matsuya != null && matRow.groupTotal == null) {
+    stats.cheapChainTotal = mcd + yosh + suki + sai + matRow.matsuya + matRow.matsunoya + matRow.myCurry;
+    return;
+  }
+  stats.cheapChainTotal = mcd + yosh + suki + sai + (stats.matsuya ?? 0);
+}
+
+/** Override Matsuya / Matsunoya / My Curry with official Hyogo breakdown when provided (see data/matsu-official-hyogo.js). */
+function applyOfficialMatsuHyogoStats() {
+  const official = window.HYOGO_OFFICIAL_MATSU;
+  if (!official || typeof official !== "object") return;
+
+  for (const area of areaData) {
+    const row = official[area.name];
+    if (!row) continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+
+    if (row.groupTotal != null) {
+      stats.matsuGroupTotal = row.groupTotal;
+      stats.matsuya = null;
+      stats.matsunoya = null;
+      stats.myCurry = null;
+    } else {
+      stats.matsuGroupTotal = null;
+      stats.matsuya = row.matsuya;
+      stats.matsunoya = row.matsunoya;
+      stats.myCurry = row.myCurry;
+    }
+
+    recalcCheapChainTotal(stats, area.name);
+  }
+}
+
+/** Override McDonald's counts from official Hyogo list (see data/mcdonalds-official-hyogo.js). */
+function applyOfficialMcDonaldsHyogoStats() {
+  const data = window.HYOGO_OFFICIAL_MCDONALDS;
+  if (!data || typeof data !== "object") return;
+
+  for (const area of areaData) {
+    const n = data[area.name];
+    if (n == null || typeof n !== "number") continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.mcdonalds = n;
+    recalcCheapChainTotal(stats, area.name);
+  }
+}
+
+/** Override Saizeriya counts from official Hyogo list (see data/saizeriya-official-hyogo.js). */
+function applyOfficialSaizeriyaHyogoStats() {
+  const data = window.HYOGO_OFFICIAL_SAIZERIYA;
+  if (!data || typeof data !== "object") return;
+
+  for (const area of areaData) {
+    const n = data[area.name];
+    if (n == null || typeof n !== "number") continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.saizeriya = n;
+    recalcCheapChainTotal(stats, area.name);
+  }
+}
+
+/** Override home center counts from official Hyogo list (see data/home-centers-official-hyogo.js). */
+function applyOfficialHomeCentersHyogoStats() {
+  const data = window.HYOGO_OFFICIAL_HOME_CENTERS;
+  if (!data || typeof data !== "object") return;
+
+  for (const area of areaData) {
+    const n = data[area.name];
+    if (n == null || typeof n !== "number") continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+    stats.homeCenters = n;
   }
 }
 
@@ -3006,6 +3230,10 @@ async function loadChainCounts() {
     const cached = readChainCache();
     if (cached && typeof cached.savedAt === "number" && cached.countsByArea && Date.now() - cached.savedAt < chainCacheTtlMs) {
       applyChainCounts(cached.countsByArea);
+      applyOfficialMatsuHyogoStats();
+      applyOfficialMcDonaldsHyogoStats();
+      applyOfficialSaizeriyaHyogoStats();
+      applyOfficialHomeCentersHyogoStats();
       chainStatsLoaded = true;
       selectArea(state.selectedName);
       return;
@@ -3025,6 +3253,10 @@ async function loadChainCounts() {
     }
     const countsByArea = countChainsByArea(resolvedPayloads);
     applyChainCounts(countsByArea);
+    applyOfficialMatsuHyogoStats();
+    applyOfficialMcDonaldsHyogoStats();
+    applyOfficialSaizeriyaHyogoStats();
+    applyOfficialHomeCentersHyogoStats();
     writeChainCache({ savedAt: Date.now(), countsByArea });
     chainStatsLoaded = true;
     selectArea(state.selectedName);
