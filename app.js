@@ -122,6 +122,7 @@ const hyogoOverpassBBox = [34.18, 133.98, 35.82, 135.98];
 const chainQueryEndpoint = "https://overpass-api.de/api/interpreter";
 let chainStatsLoading = false;
 let chainStatsLoaded = false;
+let chainCountsGeomWaitAttempt = 0;
 let medicalStatsLoading = false;
 let medicalStatsLoaded = false;
 let discountStoreLoading = false;
@@ -2645,6 +2646,10 @@ function buildSvgBoundaryLayer() {
   labelLayer?.remove?.();
   labelLayer = null;
   svgStationLayer = null;
+  for (const key of Object.keys(areaGeometries)) {
+    delete areaGeometries[key];
+  }
+
   const mapElement = elements.map;
   mapElement.innerHTML = "";
 
@@ -2674,6 +2679,7 @@ function buildSvgBoundaryLayer() {
 
   areaData.forEach((area) => {
     if (area.lat == null || area.lng == null) return;
+    areaGeometries[area.name] = fallbackDiskPolygon(area.lat, area.lng);
     const { x, y } = projectArea(area);
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute("tabindex", "0");
@@ -3046,7 +3052,7 @@ async function fetchOverpassCounts(query) {
   return response.json();
 }
 
-const chainCacheKey = "hyogoChainCountsCacheV9";
+const chainCacheKey = "hyogoChainCountsCacheV10";
 const chainCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 function readChainCache() {
@@ -3145,36 +3151,46 @@ function countChainsByArea(payloads) {
   return countsByArea;
 }
 
+function defaultChainCountRow() {
+  return {
+    homeCenters: 0,
+    mcdonalds: 0,
+    yoshinoya: 0,
+    sukiya: 0,
+    matsuya: 0,
+    saizeriya: 0,
+    cheapChainTotal: 0
+  };
+}
+
 /** OSM 取得失敗時にすべて 0 として後続の公式オーバーライドだけ効かせる。 */
 function emptyChainCountsByArea() {
   const countsByArea = {};
   for (const area of areaData) {
-    countsByArea[area.name] = {
-      homeCenters: 0,
-      mcdonalds: 0,
-      yoshinoya: 0,
-      sukiya: 0,
-      matsuya: 0,
-      saizeriya: 0,
-      cheapChainTotal: 0
-    };
+    countsByArea[area.name] = defaultChainCountRow();
   }
   return countsByArea;
 }
 
 function applyChainCounts(countsByArea) {
   for (const area of areaData) {
-    const counts = countsByArea[area.name];
-    if (!counts) continue;
     const stats = areaStats[area.name];
     if (!stats) continue;
-    stats.homeCenters = counts.homeCenters;
-    stats.mcdonalds = counts.mcdonalds;
-    stats.yoshinoya = counts.yoshinoya;
-    stats.sukiya = counts.sukiya;
-    stats.matsuya = counts.matsuya;
-    stats.saizeriya = counts.saizeriya;
-    stats.cheapChainTotal = counts.cheapChainTotal;
+    const raw = countsByArea[area.name];
+    const merged = { ...defaultChainCountRow(), ...(raw || {}) };
+    merged.cheapChainTotal =
+      (merged.mcdonalds ?? 0) +
+      (merged.yoshinoya ?? 0) +
+      (merged.sukiya ?? 0) +
+      (merged.matsuya ?? 0) +
+      (merged.saizeriya ?? 0);
+    stats.homeCenters = merged.homeCenters;
+    stats.mcdonalds = merged.mcdonalds;
+    stats.yoshinoya = merged.yoshinoya;
+    stats.sukiya = merged.sukiya;
+    stats.matsuya = merged.matsuya;
+    stats.saizeriya = merged.saizeriya;
+    stats.cheapChainTotal = merged.cheapChainTotal;
   }
 }
 
@@ -3337,7 +3353,14 @@ function applyOfficialMedicalHyogoStats() {
 
 async function loadChainCounts() {
   if (chainStatsLoading || chainStatsLoaded) return;
-  if (!Object.keys(areaGeometries).length) return;
+  if (!Object.keys(areaGeometries).length) {
+    if (chainCountsGeomWaitAttempt < 50) {
+      chainCountsGeomWaitAttempt += 1;
+      window.setTimeout(() => loadChainCounts(), 200);
+    }
+    return;
+  }
+  chainCountsGeomWaitAttempt = 0;
   chainStatsLoading = true;
   try {
     const cached = readChainCache();
