@@ -119,12 +119,18 @@ for (const stats of Object.values(areaStats)) {
 
 const areaGeometries = {};
 const hyogoOverpassBBox = [34.18, 133.98, 35.82, 135.98];
-const chainQueryEndpoint = "https://overpass-api.de/api/interpreter";
+/** いずれか1つが応答すればOSM集計可能（回線・DNSで .de が不通な場合の代替）。 */
+const overpassInterpreterUrls = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.openstreetmap.fr/api/interpreter"
+];
 let chainStatsLoading = false;
 let chainStatsLoaded = false;
 let chainCountsGeomWaitAttempt = 0;
 let medicalStatsLoading = false;
 let medicalStatsLoaded = false;
+let medicalCountsGeomWaitAttempt = 0;
 let discountStoreLoading = false;
 let discountStoreLoaded = false;
 
@@ -3039,17 +3045,28 @@ const discountStoreSources = [
 ];
 
 async function fetchOverpassCounts(query) {
-  const response = await fetch(chainQueryEndpoint, {
+  const body = new URLSearchParams({ data: query });
+  const init = {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
     },
-    body: new URLSearchParams({ data: query })
-  });
-  if (!response.ok) {
-    throw new Error(`Overpass request failed: ${response.status}`);
+    body
+  };
+  let lastError = null;
+  for (const url of overpassInterpreterUrls) {
+    try {
+      const response = await fetch(url, init);
+      if (!response.ok) {
+        lastError = new Error(`Overpass request failed: ${response.status}`);
+        continue;
+      }
+      return response.json();
+    } catch (err) {
+      lastError = err;
+    }
   }
-  return response.json();
+  throw lastError ?? new Error("Overpass request failed on all mirrors");
 }
 
 const chainCacheKey = "hyogoChainCountsCacheV10";
@@ -3318,15 +3335,28 @@ function countMedicalByArea(payloads) {
   return countsByArea;
 }
 
+function defaultMedicalCountRow() {
+  return { hospitals: 0, clinics: 0, medicalTotal: 0 };
+}
+
+function emptyMedicalCountsByArea() {
+  const countsByArea = {};
+  for (const area of areaData) {
+    countsByArea[area.name] = defaultMedicalCountRow();
+  }
+  return countsByArea;
+}
+
 function applyMedicalCounts(countsByArea) {
   for (const area of areaData) {
-    const counts = countsByArea[area.name];
-    if (!counts) continue;
     const stats = areaStats[area.name];
     if (!stats) continue;
-    stats.hospitals = counts.hospitals;
-    stats.clinics = counts.clinics;
-    stats.medicalTotal = counts.medicalTotal;
+    const raw = countsByArea[area.name];
+    const merged = { ...defaultMedicalCountRow(), ...(raw || {}) };
+    merged.medicalTotal = (merged.hospitals ?? 0) + (merged.clinics ?? 0);
+    stats.hospitals = merged.hospitals;
+    stats.clinics = merged.clinics;
+    stats.medicalTotal = merged.medicalTotal;
   }
 }
 
@@ -3538,7 +3568,14 @@ async function loadDiscountStoreCounts() {
 
 async function loadMedicalCounts() {
   if (medicalStatsLoading || medicalStatsLoaded) return;
-  if (!Object.keys(areaGeometries).length) return;
+  if (!Object.keys(areaGeometries).length) {
+    if (medicalCountsGeomWaitAttempt < 50) {
+      medicalCountsGeomWaitAttempt += 1;
+      window.setTimeout(() => loadMedicalCounts(), 200);
+    }
+    return;
+  }
+  medicalCountsGeomWaitAttempt = 0;
   medicalStatsLoading = true;
   try {
     const cached = readMedicalCache();
@@ -3570,6 +3607,14 @@ async function loadMedicalCounts() {
     selectArea(state.selectedName);
   } catch (error) {
     console.warn("Medical count aggregation failed", error);
+    try {
+      applyMedicalCounts(emptyMedicalCountsByArea());
+      applyOfficialMedicalHyogoStats();
+      medicalStatsLoaded = true;
+      selectArea(state.selectedName);
+    } catch (fallbackError) {
+      console.warn("Medical count fallback failed", fallbackError);
+    }
   } finally {
     medicalStatsLoading = false;
   }
