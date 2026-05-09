@@ -28,7 +28,7 @@
     <meta name="twitter:title" content="使い方 — 兵庫県 住環境マップ（HYOGO AREA LENS）" />
     <meta name="twitter:description" content="市区町村の比較、駅名検索、指標の見方、注意点をまとめています。" />
     <meta name="twitter:image" content="https://hyogo-area-lens.net/og.png" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260509-11" />
   </head>
   <body>
     <div class="app-shell">
@@ -109,7 +109,11 @@
 
       <main class="map-stage" aria-label="マップ表示">
         <div id="mapEmbed" style="scroll-margin-top:12px;">
-          <iframe class="howto-map-embed" src="./" title="HYOGO AREA LENS マップ" loading="lazy"></iframe>
+          <p class="data-notice" style="margin:0 0 10px;font-size:13px;line-height:1.55;">
+            下はトップページと同じマップです。チェーン店・ホームセンターなどは外部データ取得後に数字が入ります（数秒〜）。
+            ずっと「集計中」のときは<a href="./">トップのマップを直接開く</a>か、ページを再読み込みしてください。
+          </p>
+          <iframe class="howto-map-embed" src="./" title="HYOGO AREA LENS マップ"></iframe>
         </div>
       </main>
     </div>

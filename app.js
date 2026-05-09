@@ -2360,15 +2360,36 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
+/** 境界TopoJSONが取れないときの円近似（L.circle と同程度の半径）。OSM集計の point-in-polygon 用。 */
+function fallbackDiskPolygon(lat, lng, radiusM = 4200) {
+  const latRad = (lat * Math.PI) / 180;
+  const dLat = radiusM / 111320;
+  const cosLat = Math.cos(latRad) || 1e-6;
+  const dLng = radiusM / (111320 * cosLat);
+  const ring = [
+    [lng - dLng, lat - dLat],
+    [lng + dLng, lat - dLat],
+    [lng + dLng, lat + dLat],
+    [lng - dLng, lat + dLat],
+    [lng - dLng, lat - dLat]
+  ];
+  return { type: "Polygon", coordinates: [ring] };
+}
+
 function buildFallbackBoundaryLayer() {
   if (!window.L || !map) {
     buildSvgBoundaryLayer();
     return;
   }
 
+  for (const key of Object.keys(areaGeometries)) {
+    delete areaGeometries[key];
+  }
+
   const layers = [];
   areaData.forEach((area) => {
     if (area.lat == null || area.lng == null) return;
+    areaGeometries[area.name] = fallbackDiskPolygon(area.lat, area.lng);
     const feature = { type: "Feature", properties: {}, __areaData: area };
     const circle = L.circle([area.lat, area.lng], {
       radius: 4200,
@@ -2773,7 +2794,7 @@ async function loadBoundaryMap() {
 
   for (const url of urls) {
     try {
-      const response = await fetchWithTimeout(url, url.startsWith("http") ? 3000 : 1000);
+      const response = await fetchWithTimeout(url, url.startsWith("http") ? 3000 : 2500);
       if (!response.ok) continue;
       const topology = await response.json();
       const objectName = Object.keys(topology.objects)[0];
