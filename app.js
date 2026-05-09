@@ -102,6 +102,7 @@ const chainStatKeys = [
   "cheapChainTotal",
   "hospitals",
   "clinics",
+  "dental",
   "medicalTotal"
 ];
 
@@ -692,7 +693,10 @@ const elements = {
   restaurantValue: document.querySelector("#restaurantValue"),
   residentTaxValue: document.querySelector("#residentTaxValue"),
   childcareValue: document.querySelector("#childcareValue"),
-  hospitalValue: document.querySelector("#hospitalValue"),
+  medicalClinicValue: document.querySelector("#medicalClinicValue"),
+  medicalHospitalValue: document.querySelector("#medicalHospitalValue"),
+  medicalDentalValue: document.querySelector("#medicalDentalValue"),
+  medicalTotalValue: document.querySelector("#medicalTotalValue"),
   landPriceValue: document.querySelector("#landPriceValue"),
   condoPriceValue: document.querySelector("#condoPriceValue"),
   rentInsight: document.querySelector("#rentInsight"),
@@ -1490,6 +1494,46 @@ function childcareSupportRating(area) {
   return clamp(Math.round(base + bonus), 1, 10);
 }
 
+/** 詳細パネル：一般診療所・病院・歯科・合計の表示を更新する。 */
+function renderMedicalFacilityCells(area) {
+  const stats = area.stats || {};
+  const officialMed = window.HYOGO_OFFICIAL_MEDICAL?.[area.name];
+  const setRow = (clinicText, hospitalText, dentalText, totalText) => {
+    if (elements.medicalClinicValue) elements.medicalClinicValue.textContent = clinicText;
+    if (elements.medicalHospitalValue) elements.medicalHospitalValue.textContent = hospitalText;
+    if (elements.medicalDentalValue) elements.medicalDentalValue.textContent = dentalText;
+    if (elements.medicalTotalValue) elements.medicalTotalValue.textContent = totalText;
+  };
+
+  if (!medicalStatsLoaded) {
+    const est = hospitalEstimate(area);
+    const hospitalStr = est == null ? "―" : `推定 ${est}件`;
+    setRow("―", hospitalStr, "―", "―");
+    return;
+  }
+
+  if (officialMed) {
+    const c = stats.clinics ?? 0;
+    const h = stats.hospitals ?? 0;
+    const d = stats.dental ?? 0;
+    const t = stats.medicalTotal ?? c + h + d;
+    setRow(`${c}件`, `${h}件`, `${d}件`, `${t}件（公式）`);
+    return;
+  }
+
+  if (stats.hospitals != null || stats.clinics != null) {
+    const hospitals = stats.hospitals ?? 0;
+    const clinics = stats.clinics ?? 0;
+    const total = stats.medicalTotal ?? hospitals + clinics;
+    setRow(`${clinics}件`, `${hospitals}件`, "―", `${total}件（OSM）`);
+    return;
+  }
+
+  const est = hospitalEstimate(area);
+  const hospitalStr = est == null ? "―" : `推定 ${est}件`;
+  setRow("―", hospitalStr, "―", "―");
+}
+
 function hospitalEstimate(area) {
   const medical = area.stats || {};
   // "病院の数" としては clinic を含めない（OSM の clinic は数が多く、指標が不自然に膨らむ）。
@@ -2181,17 +2225,7 @@ function selectArea(name, moveMap = false, scrollDetail = false) {
   if (elements.childcareValue) elements.childcareValue.textContent = `${childcareSupportRating(area)}/10`;
   if (elements.landPriceValue) elements.landPriceValue.textContent = `${landPriceRating(area)}/10`;
   if (elements.condoPriceValue) elements.condoPriceValue.textContent = condoPriceDisplay(area);
-  if (elements.hospitalValue) {
-    const stats = area.stats || {};
-    if (stats.hospitals != null || stats.clinics != null) {
-      const hospitals = stats.hospitals ?? 0;
-      const clinics = stats.clinics ?? 0;
-      elements.hospitalValue.textContent = `病院${hospitals}件（診療所${clinics}）`;
-    } else {
-      const count = hospitalEstimate(area);
-      elements.hospitalValue.textContent = count == null ? "推定 --件" : `推定 ${count}件`;
-    }
-  }
+  renderMedicalFacilityCells(area);
   elements.selectedSummary.textContent = area.summary;
   elements.rentInsight.textContent = rentInsight(area);
   elements.safetyInsight.textContent = safetyInsight(area);
@@ -3222,6 +3256,27 @@ function applyMedicalCounts(countsByArea) {
   }
 }
 
+/** Override clinic / hospital / dental counts from official Hyogo list (see data/medical-official-hyogo.js). */
+function applyOfficialMedicalHyogoStats() {
+  const data = window.HYOGO_OFFICIAL_MEDICAL;
+  if (!data || typeof data !== "object") return;
+
+  for (const area of areaData) {
+    const row = data[area.name];
+    if (!row) continue;
+    const stats = areaStats[area.name];
+    if (!stats) continue;
+
+    if (typeof row.clinics === "number") stats.clinics = row.clinics;
+    if (typeof row.hospitals === "number") stats.hospitals = row.hospitals;
+    if (typeof row.dental === "number") stats.dental = row.dental;
+    if (typeof row.total === "number") stats.medicalTotal = row.total;
+    else
+      stats.medicalTotal =
+        (stats.clinics ?? 0) + (stats.hospitals ?? 0) + (stats.dental ?? 0);
+  }
+}
+
 async function loadChainCounts() {
   if (chainStatsLoading || chainStatsLoaded) return;
   if (!Object.keys(areaGeometries).length) return;
@@ -3267,7 +3322,7 @@ async function loadChainCounts() {
   }
 }
 
-const medicalCacheKey = "hyogoMedicalCountsCacheV2";
+const medicalCacheKey = "hyogoMedicalCountsCacheV3";
 const medicalCacheTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
 const discountStoreCacheKey = "hyogoDiscountStoreCountsCacheV1";
@@ -3397,6 +3452,7 @@ async function loadMedicalCounts() {
     const cached = readMedicalCache();
     if (cached && typeof cached.savedAt === "number" && cached.countsByArea && Date.now() - cached.savedAt < medicalCacheTtlMs) {
       applyMedicalCounts(cached.countsByArea);
+      applyOfficialMedicalHyogoStats();
       medicalStatsLoaded = true;
       selectArea(state.selectedName);
       return;
@@ -3416,6 +3472,7 @@ async function loadMedicalCounts() {
     }
     const countsByArea = countMedicalByArea(resolvedPayloads);
     applyMedicalCounts(countsByArea);
+    applyOfficialMedicalHyogoStats();
     writeMedicalCache({ savedAt: Date.now(), countsByArea });
     medicalStatsLoaded = true;
     selectArea(state.selectedName);
